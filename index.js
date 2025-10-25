@@ -49,10 +49,8 @@ class EspritMondeBot {
       const socketConfig = {
         auth: state,
         printQRInTerminal: false,
-        logger,
         browser: ['Ubuntu', 'Chrome', '128.0.6613.86'],
-        version: [2, 3000, 1025190524],
-        defaultQueryTimeoutMs: undefined,
+        version: [2, 3000, 1025190524], 
         getMessage: async key => {
           console.log('⚠️ Message non déchiffré, retry demandé:', key);
           return { conversation: '🔄 Réessaye d\'envoyer ton message' };
