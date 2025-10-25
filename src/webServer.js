@@ -25,11 +25,13 @@ class WebServer {
     this.app.use(express.static(join(__dirname, '..', 'public')));
 
     this.app.get('/api/qr', async (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
       if (this.qrCodeData) {
         try {
           const qrImage = await QRCode.toDataURL(this.qrCodeData);
           res.json({ qr: qrImage, available: true });
         } catch (error) {
+          console.error('Erreur génération QR:', error);
           res.json({ qr: null, available: false });
         }
       } else {
@@ -38,6 +40,7 @@ class WebServer {
     });
 
     this.app.get('/api/stats', (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
       const uptimeSeconds = Math.floor((Date.now() - this.botStats.uptime) / 1000);
       res.json({
         ...this.botStats,

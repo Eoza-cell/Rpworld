@@ -6,6 +6,7 @@ class PollinationsAPI {
   }
 
   async generateNarrative(context) {
+    console.log('🤖 Appel Pollinations generateNarrative...');
     try {
       const systemPrompt = `Tu es ESPRIT-MONDE, une IA de jeu de rôle immersif qui contrôle tout le monde de Livium.
 
@@ -51,9 +52,11 @@ Génère une narration immersive décrivant ce qui se passe maintenant.`;
         }
       );
 
+      console.log('✅ Pollinations réponse reçue:', response.data ? 'OK' : 'VIDE');
       return response.data || "Le monde de Livium réagit à ton action...";
     } catch (error) {
-      console.error('Erreur API Pollinations:', error.message);
+      console.error('❌ Erreur API Pollinations:', error.message);
+      console.error('Details:', error.response?.status, error.response?.data);
       return this.getFallbackNarrative(context);
     }
   }
