@@ -13,6 +13,7 @@ import actionDetector from './src/actionDetector.js';
 import consequences from './src/consequences.js';
 import npcManager from './src/npcs.js';
 import pollinations from './src/pollinations.js';
+import webServer from './src/webServer.js';
 
 dotenv.config();
 
@@ -27,11 +28,16 @@ class EspritMondeBot {
   async init() {
     console.log('🌐 Initialisation ESPRIT-MONDE...');
     
+    webServer.init();
+    webServer.updateStatus('Initialisation de la base de données...', false);
+    
     await database.init();
     console.log('✅ Base de données initialisée');
+    webServer.updateStatus('Initialisation du monde...', false);
     
     await worldManager.init();
     console.log('✅ Monde de Livium initialisé');
+    webServer.updateStatus('Connexion à WhatsApp...', false);
     
     await this.connectToWhatsApp();
   }
@@ -87,6 +93,9 @@ class EspritMondeBot {
           console.log('\n📱 Scannez ce QR Code avec WhatsApp:\n');
           qrcode.generate(qr, { small: true });
           console.log('\n⏳ En attente du scan...\n');
+          
+          webServer.updateQRCode(qr);
+          webServer.updateStatus('⏳ En attente du scan QR Code', false);
         }
 
         if (connection === 'close') {
@@ -97,19 +106,27 @@ class EspritMondeBot {
           console.log('📝 Raison:', errorMessage);
           console.log('📋 Code:', statusCode);
 
+          webServer.updateStatus(`❌ Déconnecté: ${errorMessage}`, false);
+          webServer.updateQRCode(null);
+
           const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
           if (shouldReconnect) {
             console.log('🔄 Reconnexion dans 3 secondes...');
+            webServer.updateStatus('🔄 Reconnexion en cours...', false);
             await new Promise(resolve => setTimeout(resolve, 3000));
             await this.connectToWhatsApp();
           } else {
             console.log('⚠️ Déconnecté. Supprimez le dossier auth_info_baileys et relancez.');
+            webServer.updateStatus('⚠️ Déconnecté - Redémarrage requis', false);
           }
         } else if (connection === 'open') {
           console.log('✅ Bot connecté à WhatsApp !');
           console.log('🎮 ESPRIT-MONDE est prêt à jouer !');
           this.isReady = true;
+          
+          webServer.updateStatus('✅ Connecté - Bot actif', true);
+          webServer.updateQRCode(null);
         }
       });
 
@@ -138,6 +155,9 @@ class EspritMondeBot {
 
       try {
         await this.processPlayerAction(from, text);
+        
+        const playerCount = Object.keys(database.players).length;
+        webServer.updatePlayerCount(playerCount);
       } catch (error) {
         console.error('Erreur traitement message:', error);
         await this.sendMessage(from, "❌ Une erreur s'est produite dans le monde de Livium...");
