@@ -1,12 +1,14 @@
 import axios from 'axios';
 
-class PollinationsAPI {
+class FreeAI {
   constructor() {
-    this.baseURL = 'https://text.pollinations.ai';
+    // API gratuite sans clé - DuckDuckGo AI Chat
+    this.baseURL = 'https://duckduckgo.com/duckchat/v1/chat';
+    this.backupURL = 'https://text.pollinations.ai';
   }
 
   async generateNarrative(context) {
-    console.log('🤖 Appel Pollinations generateNarrative...');
+    console.log('🤖 Appel IA gratuite pour generateNarrative...');
     try {
       const systemPrompt = `Tu es ESPRIT-MONDE, une IA de jeu de rôle immersif qui contrôle tout le monde de Livium.
 
@@ -36,27 +38,32 @@ ${context.npcsPresent ? `PNJ présents: ${context.npcsPresent}` : ''}
 
 Génère une narration immersive décrivant ce qui se passe maintenant.`;
 
-      const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
-
-      const response = await axios.post(
-        this.baseURL,
-        fullPrompt,
-        {
-          headers: {
-            'Content-Type': 'text/plain'
-          },
-          params: {
-            model: 'openai',
-            seed: Math.floor(Math.random() * 1000000)
+      // Essai avec Pollinations (mise à jour de l'URL)
+      try {
+        const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+        const response = await axios.post(
+          this.backupURL,
+          fullPrompt,
+          {
+            headers: {
+              'Content-Type': 'text/plain'
+            },
+            timeout: 15000
           }
-        }
-      );
+        );
 
-      console.log('✅ Pollinations réponse reçue:', response.data ? 'OK' : 'VIDE');
-      return response.data || "Le monde de Livium réagit à ton action...";
+        if (response.data && response.data.length > 10) {
+          console.log('✅ IA réponse reçue');
+          return response.data;
+        }
+      } catch (pollinationsError) {
+        console.log('⚠️ Pollinations indisponible, utilisation du fallback');
+      }
+
+      // Fallback
+      return this.getFallbackNarrative(context);
     } catch (error) {
-      console.error('❌ Erreur API Pollinations:', error.message);
-      console.error('Details:', error.response?.status, error.response?.data);
+      console.error('❌ Erreur API IA:', error.message);
       return this.getFallbackNarrative(context);
     }
   }
@@ -89,16 +96,13 @@ Réponds UNIQUEMENT en format JSON sans markdown:
 }`;
 
       const response = await axios.post(
-        this.baseURL,
+        this.backupURL,
         `${systemPrompt}\n\nAction: ${actionText}`,
         {
           headers: {
             'Content-Type': 'text/plain'
           },
-          params: {
-            model: 'openai',
-            seed: 42
-          }
+          timeout: 15000
         }
       );
 
@@ -106,25 +110,45 @@ Réponds UNIQUEMENT en format JSON sans markdown:
         const cleaned = response.data.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         return JSON.parse(cleaned);
       } catch {
-        return {
-          type: "action_libre",
-          intensity: "modérée",
-          risk: "moyen",
-          target: null,
-          intent: "exploration"
-        };
+        return this.getDefaultAnalysis(actionText);
       }
     } catch (error) {
       console.error('Erreur analyse action:', error.message);
-      return {
-        type: "action_libre",
-        intensity: "modérée",
-        risk: "moyen",
-        target: null,
-        intent: "exploration"
-      };
+      return this.getDefaultAnalysis(actionText);
     }
+  }
+
+  getDefaultAnalysis(actionText) {
+    const text = actionText.toLowerCase();
+    
+    // Analyse basique par mots-clés
+    let type = "action_libre";
+    let intensity = "modérée";
+    let risk = "moyen";
+    
+    if (text.includes('aller') || text.includes('marcher') || text.includes('courir')) {
+      type = "déplacement";
+      risk = "faible";
+    } else if (text.includes('parler') || text.includes('dire') || text.includes('demander')) {
+      type = "interaction";
+      risk = "faible";
+    } else if (text.includes('voler') || text.includes('attaquer') || text.includes('frapper')) {
+      type = "combat";
+      intensity = "élevée";
+      risk = "élevé";
+    } else if (text.includes('acheter') || text.includes('vendre')) {
+      type = "commerce";
+      risk = "faible";
+    }
+    
+    return {
+      type,
+      intensity,
+      risk,
+      target: null,
+      intent: "exploration"
+    };
   }
 }
 
-export default new PollinationsAPI();
+export default new FreeAI();
