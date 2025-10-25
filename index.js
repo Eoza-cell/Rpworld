@@ -1,5 +1,8 @@
-import pkg from '@whiskeysockets/baileys';
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = pkg;
+import {
+  default as makeWASocket,
+  DisconnectReason,
+  useMultiFileAuthState
+} from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 import dotenv from 'dotenv';
 
@@ -46,7 +49,7 @@ class EspritMondeBot {
         auth: state,
         printQRInTerminal: false,
         browser: ['Ubuntu', 'Chrome', '128.0.6613.86'],
-        version: [2, 3000, 1025190524], 
+        version: [2, 3000, 1025190524],
         getMessage: async key => {
           console.log('⚠️ Message non déchiffré, retry demandé:', key);
           return { conversation: '🔄 Réessaye d\'envoyer ton message' };
@@ -117,99 +120,100 @@ class EspritMondeBot {
       if (!message.message || message.key.fromMe) continue;
 
       const from = message.key.remoteJid;
-      const text = message.message.conversation || 
+      const text = message.message.conversation ||
                    message.message.extendedTextMessage?.text || '';
+      const participant = message.key.participant; // Get participant for group messages
 
       if (!text) continue;
 
       const isGroup = from.endsWith('@g.us');
-      
+
       if (isGroup && !text.startsWith('/')) { // Ignore messages in groups that are not commands
         continue;
       }
 
-      console.log(`📨 Message de ${from}: ${text}`);
+      console.log(`📨 Message de ${from}${participant ? ` (via ${participant})` : ''}: ${text}`);
 
       try {
-        await this.processPlayerAction(from, text, isGroup);
+        await this.processPlayerAction(from, text, isGroup, participant);
 
         const playerCount = Object.keys(database.players).length;
         webServer.updatePlayerCount(playerCount);
       } catch (error) {
         console.error('Erreur traitement message:', error);
-        await this.sendMessage(from, "❌ Une erreur s'est produite dans le monde de Livium...");
+        await this.sendMessage(from, "❌ Une erreur s\'est produite dans le monde de Livium...");
       }
     }
   }
 
-  async processPlayerAction(from, actionText, isGroup) {
-    const phoneNumber = isGroup ? from.split('@')[0] : from;
-    const pushName = actionText.split(' ')[0];
+  async processPlayerAction(from, text, isGroup, participant) {
+    const phoneNumber = isGroup ? participant.replace('@s.whatsapp.net', '') : from.replace('@s.whatsapp.net', '');
+    const pushName = text.split(' ')[0]; // This might not be the player's name, consider using message.pushName if available
     const player = await playerManager.getOrCreatePlayer(phoneNumber, pushName);
 
-    if (actionText.toLowerCase() === '/start' || actionText.toLowerCase() === '/commencer') {
+    if (text.toLowerCase() === '/start' || text.toLowerCase() === '/commencer') {
       await this.sendWelcomeMessage(from, player, isGroup);
       return;
     }
 
-    if (actionText.toLowerCase() === '/stats') {
+    if (text.toLowerCase() === '/stats') {
       const stats = playerManager.getStatsDisplay(player);
       const location = await worldManager.getLocationDescription(player.position.location);
       await this.sendMessage(from, `${stats}\n\n${location}`);
       return;
     }
 
-    if (actionText.toLowerCase() === '/help' || actionText.toLowerCase() === '/aide') {
+    if (text.toLowerCase() === '/help' || text.toLowerCase() === '/aide') {
       await this.sendHelpMessage(from, isGroup);
       return;
     }
 
-    if (actionText.toLowerCase() === '/metiers' || actionText.toLowerCase() === '/jobs') {
+    if (text.toLowerCase() === '/metiers' || text.toLowerCase() === '/jobs') {
       await this.showJobs(from, player);
       return;
     }
 
-    if (actionText.toLowerCase().startsWith('/postuler ')) {
-      const jobId = actionText.split(' ')[1];
+    if (text.toLowerCase().startsWith('/postuler ')) {
+      const jobId = text.split(' ')[1];
       await this.applyForJob(from, player, jobId);
       return;
     }
 
-    if (actionText.toLowerCase() === '/permis' || actionText.toLowerCase() === '/licenses') {
+    if (text.toLowerCase() === '/permis' || text.toLowerCase() === '/licenses') {
       await this.showLicenses(from, player);
       return;
     }
 
-    if (actionText.toLowerCase().startsWith('/acheter_permis ')) {
-      const licenseType = actionText.split(' ')[1];
+    if (text.toLowerCase().startsWith('/acheter_permis ')) {
+      const licenseType = text.split(' ')[1];
       await this.buyLicense(from, player, licenseType);
       return;
     }
 
-    if (actionText.toLowerCase() === '/vehicules' || actionText.toLowerCase() === '/vehicles') {
+    if (text.toLowerCase() === '/vehicules' || text.toLowerCase() === '/vehicles') {
       await this.showVehicles(from, player);
       return;
     }
 
-    if (actionText.toLowerCase().startsWith('/acheter_vehicule ')) {
-      const vehicleId = actionText.split(' ')[1];
+    if (text.toLowerCase().startsWith('/acheter_vehicule ')) {
+      const vehicleId = text.split(' ')[1];
       await this.buyVehicle(from, player, vehicleId);
       return;
     }
 
-    if (actionText.toLowerCase() === '/banque' || actionText.toLowerCase() === '/bank') {
+    if (text.toLowerCase() === '/banque' || text.toLowerCase() === '/bank') {
       await this.showBank(from, player);
       return;
     }
 
-    if (actionText.toLowerCase().startsWith('/deposer ')) {
-      const amount = parseInt(actionText.split(' ')[1]);
+    if (text.toLowerCase().startsWith('/deposer ')) {
+      const amount = parseInt(text.split(' ')[1]);
       await this.depositMoney(from, player, amount);
       return;
     }
 
-    if (actionText.toLowerCase().startsWith('/retirer ')) {
-      const amount = parseInt(actionText.split(' ')[1]);
+    if (text.toLowerCase().startsWith('/retirer ')) {
+      const amount = parseInt(text.split(' ')[1]);
       await this.withdrawMoney(from, player, amount);
       return;
     }
@@ -219,7 +223,7 @@ class EspritMondeBot {
       return;
     }
 
-    await this.handleFreeAction(from, player, actionText, isGroup);
+    await this.handleFreeAction(from, player, text, isGroup);
   }
 
   async handleFreeAction(from, player, actionText, isGroup) {
@@ -366,12 +370,12 @@ ${await worldManager.getLocationDescription(player.position.location)}
   async showJobs(chatId, player) {
     const jobs = economy.getJobsList();
     let message = '💼 **MÉTIERS DISPONIBLES À LIVIUM**\n\n';
-    
+
     jobs.forEach(job => {
       const canApply = economy.canApplyForJob(player, job.id);
       message += `**${job.name}** ${job.illegal ? '⚠️' : ''}\n`;
       message += `💰 Salaire: ${job.salary}$/mois\n`;
-      message += `${canApply.can ? '✅ Disponible' : `❌ ${canApply.reason}`}\n`;
+      message += `${canApply.can ? '✅ Disponible' : '❌ ' + canApply.reason}\n`;
       message += `Commande: /postuler ${job.id}\n\n`;
     });
 
@@ -380,7 +384,7 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
   async applyForJob(chatId, player, jobId) {
     const canApply = economy.canApplyForJob(player, jobId);
-    
+
     if (!canApply.can) {
       await this.sendMessage(chatId, `❌ ${canApply.reason}`);
       return;
@@ -389,25 +393,25 @@ ${await worldManager.getLocationDescription(player.position.location)}
     const job = economy.jobs[jobId];
     playerManager.setJob(player, job.name, job.salary);
     await database.savePlayer(player.phoneNumber, player);
-    
+
     await this.sendMessage(chatId, `✅ Félicitations ! Tu es maintenant ${job.name}.\n💰 Salaire: ${job.salary}$/mois\n\nTravaille pour gagner de l'argent et de l'expérience !`);
   }
 
   async showLicenses(chatId, player) {
     let message = '📜 **PERMIS ET LICENCES**\n\n';
-    
+
     message += `🚗 Permis de Conduire: ${player.licenses.driving ? '✅ Obtenu' : '❌ Non obtenu (500$)'}\n`;
-    message += `🔫 Permis de Port d'Arme: ${player.licenses.gun ? '✅ Obtenu' : '❌ Non obtenu (1000$)'}\n`;
+    message += `🔫 Permis de Port d\'Arme: ${player.licenses.gun ? '✅ Obtenu' : '❌ Non obtenu (1000$)'}\n`;
     message += `🏢 Licence Commerciale: ${player.licenses.business ? '✅ Obtenu' : '❌ Non obtenu (2000$)'}\n\n`;
-    
+
     message += 'Pour acheter: /acheter_permis [driving/gun/business]';
-    
+
     await this.sendMessage(chatId, message);
   }
 
   async buyLicense(chatId, player, licenseType) {
     const licenseInfo = economy.getLicenseInfo(licenseType);
-    
+
     if (!licenseInfo) {
       await this.sendMessage(chatId, '❌ Permis inconnu');
       return;
@@ -419,7 +423,7 @@ ${await worldManager.getLocationDescription(player.position.location)}
     }
 
     const result = playerManager.grantLicense(player, licenseType, licenseInfo.cost);
-    
+
     if (result.success) {
       await database.savePlayer(player.phoneNumber, result.player);
       await this.sendMessage(chatId, `✅ ${licenseInfo.name} obtenu ! (-${licenseInfo.cost}$)`);
@@ -431,7 +435,7 @@ ${await worldManager.getLocationDescription(player.position.location)}
   async showVehicles(chatId, player) {
     const vehicles = economy.getVehiclesList();
     let message = '🚗 **VÉHICULES DISPONIBLES**\n\n';
-    
+
     vehicles.forEach(v => {
       message += `**${v.name}**\n`;
       message += `💰 Prix: ${v.price}$\n`;
@@ -452,14 +456,14 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
   async buyVehicle(chatId, player, vehicleId) {
     const vehicleInfo = economy.getVehicleInfo(vehicleId);
-    
+
     if (!vehicleInfo) {
       await this.sendMessage(chatId, '❌ Véhicule inconnu');
       return;
     }
 
     const result = playerManager.buyVehicle(player, vehicleInfo);
-    
+
     if (result.success) {
       await database.savePlayer(player.phoneNumber, result.player);
       await this.sendMessage(chatId, `✅ ${vehicleInfo.name} acheté ! Tu peux maintenant te déplacer plus rapidement.`);
