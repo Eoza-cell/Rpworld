@@ -47,6 +47,7 @@ class WebServer {
 
     this.app.listen(this.port, '0.0.0.0', () => {
       console.log(`🌐 Interface web disponible sur http://0.0.0.0:${this.port}`);
+      console.log(`📍 En production, accessible via le domaine de déploiement Replit`);
     });
   }
 
