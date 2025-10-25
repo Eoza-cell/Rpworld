@@ -1,0 +1,29 @@
+{
+  "name": "esprit-monde-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "Bot WhatsApp RP immersif avec système ESPRIT-MONDE et IA Pollinations",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "baileys",
+    "rp",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@whiskeysockets/baileys": "^6.7.20",
+    "axios": "^1.12.2",
+    "dotenv": "^17.2.3",
+    "https-proxy-agent": "^7.0.6",
+    "pino": "^9.14.0",
+    "qrcode-terminal": "^0.12.0",
+    "socks-proxy-agent": "^8.0.5"
+  }
+}

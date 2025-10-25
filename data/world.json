@@ -1,0 +1,40 @@
+{
+  "time": {
+    "startTime": 1761420479131,
+    "currentDay": 1,
+    "currentHour": 0,
+    "weatherCondition": "ensoleillé"
+  },
+  "locations": {
+    "quartier_beton": {
+      "name": "Quartier Béton",
+      "description": "Zone urbaine dense avec immeubles délabrés",
+      "danger": 60,
+      "police": 30
+    },
+    "quartier_riche": {
+      "name": "Quartier Riche",
+      "description": "Zone résidentielle luxueuse avec villas et jardins",
+      "danger": 10,
+      "police": 80
+    },
+    "zone_industrielle": {
+      "name": "Zone Industrielle",
+      "description": "Usines et entrepôts abandonnés",
+      "danger": 70,
+      "police": 20
+    },
+    "centre_ville": {
+      "name": "Centre-Ville",
+      "description": "Cœur commercial animé de Livium",
+      "danger": 30,
+      "police": 60
+    },
+    "marche": {
+      "name": "Marché",
+      "description": "Marché local avec échoppes et vendeurs",
+      "danger": 40,
+      "police": 50
+    }
+  }
+}
