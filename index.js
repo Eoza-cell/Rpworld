@@ -10,6 +10,7 @@ import consequences from './src/consequences.js';
 import npcManager from './src/npcs.js';
 import pollinations from './src/pollinations.js';
 import webServer from './src/webServer.js';
+import economy from './src/economy.js';
 
 dotenv.config();
 
@@ -141,8 +142,9 @@ class EspritMondeBot {
   }
 
   async processPlayerAction(from, actionText, isGroup) {
-    const pushName = actionText.split(' ')[0]; // This might not be reliable in groups
-    const player = await playerManager.getOrCreatePlayer(from, pushName);
+    const phoneNumber = isGroup ? from.split('@')[0] : from;
+    const pushName = actionText.split(' ')[0];
+    const player = await playerManager.getOrCreatePlayer(phoneNumber, pushName);
 
     if (actionText.toLowerCase() === '/start' || actionText.toLowerCase() === '/commencer') {
       await this.sendWelcomeMessage(from, player, isGroup);
@@ -158,6 +160,56 @@ class EspritMondeBot {
 
     if (actionText.toLowerCase() === '/help' || actionText.toLowerCase() === '/aide') {
       await this.sendHelpMessage(from, isGroup);
+      return;
+    }
+
+    if (actionText.toLowerCase() === '/metiers' || actionText.toLowerCase() === '/jobs') {
+      await this.showJobs(from, player);
+      return;
+    }
+
+    if (actionText.toLowerCase().startsWith('/postuler ')) {
+      const jobId = actionText.split(' ')[1];
+      await this.applyForJob(from, player, jobId);
+      return;
+    }
+
+    if (actionText.toLowerCase() === '/permis' || actionText.toLowerCase() === '/licenses') {
+      await this.showLicenses(from, player);
+      return;
+    }
+
+    if (actionText.toLowerCase().startsWith('/acheter_permis ')) {
+      const licenseType = actionText.split(' ')[1];
+      await this.buyLicense(from, player, licenseType);
+      return;
+    }
+
+    if (actionText.toLowerCase() === '/vehicules' || actionText.toLowerCase() === '/vehicles') {
+      await this.showVehicles(from, player);
+      return;
+    }
+
+    if (actionText.toLowerCase().startsWith('/acheter_vehicule ')) {
+      const vehicleId = actionText.split(' ')[1];
+      await this.buyVehicle(from, player, vehicleId);
+      return;
+    }
+
+    if (actionText.toLowerCase() === '/banque' || actionText.toLowerCase() === '/bank') {
+      await this.showBank(from, player);
+      return;
+    }
+
+    if (actionText.toLowerCase().startsWith('/deposer ')) {
+      const amount = parseInt(actionText.split(' ')[1]);
+      await this.depositMoney(from, player, amount);
+      return;
+    }
+
+    if (actionText.toLowerCase().startsWith('/retirer ')) {
+      const amount = parseInt(actionText.split(' ')[1]);
+      await this.withdrawMoney(from, player, amount);
       return;
     }
 
@@ -281,12 +333,6 @@ ${await worldManager.getLocationDescription(player.position.location)}
 **Actions Libres:**
 Écris ce que tu veux faire naturellement. L'IA comprend et réagit.
 
-**Exemples:**
-• "Je marche vers le centre-ville"
-• "Je vole un sac au marché"
-• "Je mange dans un restaurant"
-• "Je me repose sur un banc"
-
 **Barres d'État:**
 ❤️ Santé - Si 0%, tu meurs
 ⚡ Énergie - Diminue avec l'action
@@ -294,27 +340,158 @@ ${await worldManager.getLocationDescription(player.position.location)}
 🧠 Mental - Affecté par le stress
 🚨 Wanted - Niveau de recherche police
 
-**Lieux de Livium:**
-• Quartier Béton
-• Centre-Ville
-• Marché
-• Quartier Riche
-• Zone Industrielle
-
-**Voyages:**
-• Tu peux voyager à travers Livium.
-• Pour aller dans un autre pays, utilise la commande /voyager [nom du pays].
-
-**Temps:**
-1h réelle = 1 jour dans le jeu
-Le monde évolue en temps réel
-
-**Commandes:**
+**Commandes Principales:**
 /stats - Tes statistiques
+/metiers - Voir les métiers
+/permis - Voir les permis
+/vehicules - Voir les véhicules
+/banque - Compte bancaire
 /help - Cette aide
-/start - Recommencer`;
+
+**Économie:**
+/postuler [métier] - Postuler à un métier
+/acheter_permis [type] - Acheter un permis
+/acheter_vehicule [type] - Acheter un véhicule
+/deposer [montant] - Déposer à la banque
+/retirer [montant] - Retirer de la banque
+
+**Lieux de Livium:**
+• Quartier Béton • Centre-Ville • Marché
+• Quartier Riche • Zone Industrielle`;
 
     await this.sendMessage(chatId, help);
+  }
+
+  async showJobs(chatId, player) {
+    const jobs = economy.getJobsList();
+    let message = '💼 **MÉTIERS DISPONIBLES À LIVIUM**\n\n';
+    
+    jobs.forEach(job => {
+      const canApply = economy.canApplyForJob(player, job.id);
+      message += `**${job.name}** ${job.illegal ? '⚠️' : ''}\n`;
+      message += `💰 Salaire: ${job.salary}$/mois\n`;
+      message += `${canApply.can ? '✅ Disponible' : `❌ ${canApply.reason}`}\n`;
+      message += `Commande: /postuler ${job.id}\n\n`;
+    });
+
+    await this.sendMessage(chatId, message);
+  }
+
+  async applyForJob(chatId, player, jobId) {
+    const canApply = economy.canApplyForJob(player, jobId);
+    
+    if (!canApply.can) {
+      await this.sendMessage(chatId, `❌ ${canApply.reason}`);
+      return;
+    }
+
+    const job = economy.jobs[jobId];
+    playerManager.setJob(player, job.name, job.salary);
+    await database.savePlayer(player.phoneNumber, player);
+    
+    await this.sendMessage(chatId, `✅ Félicitations ! Tu es maintenant ${job.name}.\n💰 Salaire: ${job.salary}$/mois\n\nTravaille pour gagner de l'argent et de l'expérience !`);
+  }
+
+  async showLicenses(chatId, player) {
+    let message = '📜 **PERMIS ET LICENCES**\n\n';
+    
+    message += `🚗 Permis de Conduire: ${player.licenses.driving ? '✅ Obtenu' : '❌ Non obtenu (500$)'}\n`;
+    message += `🔫 Permis de Port d'Arme: ${player.licenses.gun ? '✅ Obtenu' : '❌ Non obtenu (1000$)'}\n`;
+    message += `🏢 Licence Commerciale: ${player.licenses.business ? '✅ Obtenu' : '❌ Non obtenu (2000$)'}\n\n`;
+    
+    message += 'Pour acheter: /acheter_permis [driving/gun/business]';
+    
+    await this.sendMessage(chatId, message);
+  }
+
+  async buyLicense(chatId, player, licenseType) {
+    const licenseInfo = economy.getLicenseInfo(licenseType);
+    
+    if (!licenseInfo) {
+      await this.sendMessage(chatId, '❌ Permis inconnu');
+      return;
+    }
+
+    if (player.licenses[licenseType]) {
+      await this.sendMessage(chatId, '❌ Tu possèdes déjà ce permis');
+      return;
+    }
+
+    const result = playerManager.grantLicense(player, licenseType, licenseInfo.cost);
+    
+    if (result.success) {
+      await database.savePlayer(player.phoneNumber, result.player);
+      await this.sendMessage(chatId, `✅ ${licenseInfo.name} obtenu ! (-${licenseInfo.cost}$)`);
+    } else {
+      await this.sendMessage(chatId, `❌ Argent insuffisant (${licenseInfo.cost}$ requis)`);
+    }
+  }
+
+  async showVehicles(chatId, player) {
+    const vehicles = economy.getVehiclesList();
+    let message = '🚗 **VÉHICULES DISPONIBLES**\n\n';
+    
+    vehicles.forEach(v => {
+      message += `**${v.name}**\n`;
+      message += `💰 Prix: ${v.price}$\n`;
+      message += `⚡ Vitesse: ${'▰'.repeat(v.speed)}${'▱'.repeat(5-v.speed)}\n`;
+      message += `${v.requiresLicense ? '🚗 Permis requis' : '✅ Pas de permis'}\n`;
+      message += `Commande: /acheter_vehicule ${v.id}\n\n`;
+    });
+
+    if (player.inventory.vehicles.length > 0) {
+      message += '\n**TES VÉHICULES:**\n';
+      player.inventory.vehicles.forEach(v => {
+        message += `🚗 ${v.name} - Carburant: ${v.fuel}%\n`;
+      });
+    }
+
+    await this.sendMessage(chatId, message);
+  }
+
+  async buyVehicle(chatId, player, vehicleId) {
+    const vehicleInfo = economy.getVehicleInfo(vehicleId);
+    
+    if (!vehicleInfo) {
+      await this.sendMessage(chatId, '❌ Véhicule inconnu');
+      return;
+    }
+
+    const result = playerManager.buyVehicle(player, vehicleInfo);
+    
+    if (result.success) {
+      await database.savePlayer(player.phoneNumber, result.player);
+      await this.sendMessage(chatId, `✅ ${vehicleInfo.name} acheté ! Tu peux maintenant te déplacer plus rapidement.`);
+    } else if (result.reason === 'no_license') {
+      await this.sendMessage(chatId, '❌ Permis de conduire requis ! Utilise /acheter_permis driving');
+    } else {
+      await this.sendMessage(chatId, `❌ Argent insuffisant (${vehicleInfo.price}$ requis)`);
+    }
+  }
+
+  async showBank(chatId, player) {
+    const message = `🏦 **BANQUE DE LIVIUM**\n\n💰 Argent liquide: ${player.inventory.money}$\n🏦 Compte bancaire: ${player.inventory.bankAccount}$\n💎 Total: ${player.inventory.money + player.inventory.bankAccount}$\n\n/deposer [montant] - Déposer\n/retirer [montant] - Retirer`;
+    await this.sendMessage(chatId, message);
+  }
+
+  async depositMoney(chatId, player, amount) {
+    const result = playerManager.depositMoney(player, amount);
+    if (result.success) {
+      await database.savePlayer(player.phoneNumber, result.player);
+      await this.sendMessage(chatId, `✅ ${amount}$ déposés à la banque`);
+    } else {
+      await this.sendMessage(chatId, '❌ Argent insuffisant');
+    }
+  }
+
+  async withdrawMoney(chatId, player, amount) {
+    const result = playerManager.withdrawMoney(player, amount);
+    if (result.success) {
+      await database.savePlayer(player.phoneNumber, result.player);
+      await this.sendMessage(chatId, `✅ ${amount}$ retirés de la banque`);
+    } else {
+      await this.sendMessage(chatId, '❌ Fonds insuffisants');
+    }
   }
 
   async sendMessage(to, text) {

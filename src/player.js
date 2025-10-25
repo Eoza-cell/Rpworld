@@ -19,7 +19,28 @@ class PlayerManager {
       },
       inventory: {
         money: 500,
-        items: []
+        bankAccount: 0,
+        items: [],
+        vehicles: []
+      },
+      job: {
+        current: null,
+        experience: {},
+        salary: 0,
+        workHours: 0
+      },
+      licenses: {
+        driving: false,
+        gun: false,
+        business: false
+      },
+      skills: {
+        driving: 0,
+        negotiation: 0,
+        combat: 0,
+        stealth: 0,
+        cooking: 0,
+        repair: 0
       },
       history: [],
       createdAt: Date.now(),
@@ -98,7 +119,82 @@ class PlayerManager {
 🍔 Faim: ${this.getStatsBar(s.hunger)} ${s.hunger}%
 🧠 Mental: ${this.getStatsBar(s.mental)} ${s.mental}%
 🚨 Wanted: ${this.getStatsBar(s.wanted)} ${s.wanted}%
-💰 Argent: ${player.inventory.money}$`;
+💰 Argent: ${player.inventory.money}$ | 🏦 Banque: ${player.inventory.bankAccount}$
+💼 Métier: ${player.job.current || 'Sans emploi'} ${player.job.current ? `(${player.job.workHours}h)` : ''}`;
+  }
+
+  addSkillXP(player, skill, amount) {
+    if (!player.skills[skill]) player.skills[skill] = 0;
+    player.skills[skill] = Math.min(100, player.skills[skill] + amount);
+    return player;
+  }
+
+  setJob(player, jobName, salary) {
+    player.job.current = jobName;
+    player.job.salary = salary;
+    player.job.workHours = 0;
+    if (!player.job.experience[jobName]) {
+      player.job.experience[jobName] = 0;
+    }
+    return player;
+  }
+
+  addWorkHours(player, hours) {
+    if (player.job.current) {
+      player.job.workHours += hours;
+      player.job.experience[player.job.current] = 
+        (player.job.experience[player.job.current] || 0) + hours;
+      
+      const earnings = Math.floor((player.job.salary / 40) * hours);
+      this.addMoney(player, earnings);
+      
+      return { player, earnings };
+    }
+    return { player, earnings: 0 };
+  }
+
+  grantLicense(player, licenseType, cost) {
+    if (player.inventory.money >= cost) {
+      player.licenses[licenseType] = true;
+      this.addMoney(player, -cost);
+      return { success: true, player };
+    }
+    return { success: false, player };
+  }
+
+  buyVehicle(player, vehicle) {
+    if (player.inventory.money >= vehicle.price) {
+      if (!player.licenses.driving) {
+        return { success: false, reason: 'no_license', player };
+      }
+      this.addMoney(player, -vehicle.price);
+      player.inventory.vehicles.push({
+        ...vehicle,
+        fuel: 100,
+        condition: 100,
+        purchaseDate: Date.now()
+      });
+      return { success: true, player };
+    }
+    return { success: false, reason: 'insufficient_funds', player };
+  }
+
+  depositMoney(player, amount) {
+    if (player.inventory.money >= amount) {
+      player.inventory.money -= amount;
+      player.inventory.bankAccount += amount;
+      return { success: true, player };
+    }
+    return { success: false, player };
+  }
+
+  withdrawMoney(player, amount) {
+    if (player.inventory.bankAccount >= amount) {
+      player.inventory.bankAccount -= amount;
+      player.inventory.money += amount;
+      return { success: true, player };
+    }
+    return { success: false, player };
   }
 
   isAlive(player) {
