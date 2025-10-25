@@ -1,5 +1,4 @@
-import pkg from '@whiskeysockets/baileys';
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = pkg;
+import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 import dotenv from 'dotenv';
 
