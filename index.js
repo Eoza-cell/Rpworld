@@ -1,10 +1,7 @@
-import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
-import { Boom } from '@hapi/boom';
-import pino from 'pino';
+import pkg from '@whiskeysockets/baileys';
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = pkg;
 import qrcode from 'qrcode-terminal';
 import dotenv from 'dotenv';
-import { SocksProxyAgent } from 'socks-proxy-agent';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 
 import database from './src/database.js';
 import playerManager from './src/player.js';
@@ -16,8 +13,6 @@ import pollinations from './src/pollinations.js';
 import webServer from './src/webServer.js';
 
 dotenv.config();
-
-const logger = pino({ level: 'silent' });
 
 class EspritMondeBot {
   constructor() {
@@ -46,7 +41,7 @@ class EspritMondeBot {
     try {
       const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
 
-      const socketConfig = {
+      this.sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
         browser: ['Ubuntu', 'Chrome', '128.0.6613.86'],
@@ -55,32 +50,7 @@ class EspritMondeBot {
           console.log('⚠️ Message non déchiffré, retry demandé:', key);
           return { conversation: '🔄 Réessaye d\'envoyer ton message' };
         }
-      };
-
-      if (process.env.PROXY_URL) {
-        console.log('🔌 Configuration du proxy:', process.env.PROXY_URL.split('@')[1] || 'proxy configuré');
-        
-        const proxyUrl = process.env.PROXY_URL;
-        let agent;
-        
-        if (proxyUrl.startsWith('socks4://') || proxyUrl.startsWith('socks5://')) {
-          agent = new SocksProxyAgent(proxyUrl);
-          console.log('✅ Agent SOCKS proxy créé');
-        } else if (proxyUrl.startsWith('http://') || proxyUrl.startsWith('https://')) {
-          agent = new HttpsProxyAgent(proxyUrl);
-          console.log('✅ Agent HTTP proxy créé');
-        } else {
-          console.log('⚠️ Format de proxy non reconnu, connexion directe');
-        }
-
-        if (agent) {
-          socketConfig.fetchAgent = agent;
-        }
-      } else {
-        console.log('ℹ️ Aucun proxy configuré - connexion directe (peut causer erreur 405 sur datacenter IP)');
-      }
-
-      this.sock = makeWASocket(socketConfig);
+      });
 
       this.sock.ev.on('creds.update', saveCreds);
 
