@@ -84,14 +84,20 @@ class PlayerManager {
     return player;
   }
 
+  getStatsBar(value) {
+    const filled = Math.floor(value / 10);
+    const empty = 10 - filled;
+    return '▰'.repeat(filled) + '▱'.repeat(empty);
+  }
+
   getStatsDisplay(player) {
     const s = player.stats;
     return `📊 **Stats**
-❤️ Santé: ${s.health}%
-⚡ Énergie: ${s.energy}%
-🍔 Faim: ${s.hunger}%
-🧠 Mental: ${s.mental}%
-🚨 Wanted: ${s.wanted}%
+❤️ Santé: ${this.getStatsBar(s.health)} ${s.health}%
+⚡ Énergie: ${this.getStatsBar(s.energy)} ${s.energy}%
+🍔 Faim: ${this.getStatsBar(s.hunger)} ${s.hunger}%
+🧠 Mental: ${this.getStatsBar(s.mental)} ${s.mental}%
+🚨 Wanted: ${this.getStatsBar(s.wanted)} ${s.wanted}%
 💰 Argent: ${player.inventory.money}$`;
   }
 

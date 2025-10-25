@@ -21,18 +21,18 @@ class EspritMondeBot {
 
   async init() {
     console.log('🌐 Initialisation ESPRIT-MONDE...');
-    
+
     webServer.init();
     webServer.updateStatus('Initialisation de la base de données...', false);
-    
+
     await database.init();
     console.log('✅ Base de données initialisée');
     webServer.updateStatus('Initialisation du monde...', false);
-    
+
     await worldManager.init();
     console.log('✅ Monde de Livium initialisé');
     webServer.updateStatus('Connexion à WhatsApp...', false);
-    
+
     await this.connectToWhatsApp();
   }
 
@@ -60,7 +60,7 @@ class EspritMondeBot {
           console.log('\n📱 Scannez ce QR Code avec WhatsApp:\n');
           qrcode.generate(qr, { small: true });
           console.log('\n⏳ En attente du scan...\n');
-          
+
           webServer.updateQRCode(qr);
           webServer.updateStatus('⏳ En attente du scan QR Code', false);
         }
@@ -68,7 +68,7 @@ class EspritMondeBot {
         if (connection === 'close') {
           const statusCode = lastDisconnect?.error?.output?.statusCode;
           const errorMessage = lastDisconnect?.error?.message || 'Erreur inconnue';
-          
+
           console.log('❌ Connexion fermée.');
           console.log('📝 Raison:', errorMessage);
           console.log('📋 Code:', statusCode);
@@ -91,14 +91,16 @@ class EspritMondeBot {
           console.log('✅ Bot connecté à WhatsApp !');
           console.log('🎮 ESPRIT-MONDE est prêt à jouer !');
           this.isReady = true;
-          
+
           webServer.updateStatus('✅ Connecté - Bot actif', true);
           webServer.updateQRCode(null);
         }
       });
 
-      this.sock.ev.on('messages.upsert', async ({ messages }) => {
-        await this.handleMessage(messages);
+      this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        if (type === 'notify') {
+          await this.handleMessage(messages);
+        }
       });
     } catch (error) {
       console.error('💥 Erreur lors de la connexion:', error);
@@ -118,11 +120,17 @@ class EspritMondeBot {
 
       if (!text) continue;
 
+      const isGroup = from.endsWith('@g.us');
+      
+      if (isGroup && !text.startsWith('/')) { // Ignore messages in groups that are not commands
+        continue;
+      }
+
       console.log(`📨 Message de ${from}: ${text}`);
 
       try {
-        await this.processPlayerAction(from, text);
-        
+        await this.processPlayerAction(from, text, isGroup);
+
         const playerCount = Object.keys(database.players).length;
         webServer.updatePlayerCount(playerCount);
       } catch (error) {
@@ -132,37 +140,37 @@ class EspritMondeBot {
     }
   }
 
-  async processPlayerAction(phoneNumber, actionText) {
-    const pushName = actionText.split(' ')[0];
-    const player = await playerManager.getOrCreatePlayer(phoneNumber, pushName);
+  async processPlayerAction(from, actionText, isGroup) {
+    const pushName = actionText.split(' ')[0]; // This might not be reliable in groups
+    const player = await playerManager.getOrCreatePlayer(from, pushName);
 
     if (actionText.toLowerCase() === '/start' || actionText.toLowerCase() === '/commencer') {
-      await this.sendWelcomeMessage(phoneNumber, player);
+      await this.sendWelcomeMessage(from, player, isGroup);
       return;
     }
 
     if (actionText.toLowerCase() === '/stats') {
       const stats = playerManager.getStatsDisplay(player);
       const location = await worldManager.getLocationDescription(player.position.location);
-      await this.sendMessage(phoneNumber, `${stats}\n\n${location}`);
+      await this.sendMessage(from, `${stats}\n\n${location}`);
       return;
     }
 
     if (actionText.toLowerCase() === '/help' || actionText.toLowerCase() === '/aide') {
-      await this.sendHelpMessage(phoneNumber);
+      await this.sendHelpMessage(from, isGroup);
       return;
     }
 
     if (!playerManager.isAlive(player)) {
-      await this.sendMessage(phoneNumber, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie à Livium.");
+      await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie à Livium.");
       return;
     }
 
-    await this.handleFreeAction(phoneNumber, player, actionText);
+    await this.handleFreeAction(from, player, actionText, isGroup);
   }
 
-  async handleFreeAction(phoneNumber, player, actionText) {
-    await this.sendMessage(phoneNumber, "⏳ ESPRIT-MONDE analyse ton action...");
+  async handleFreeAction(from, player, actionText, isGroup) {
+    await this.sendMessage(from, "⏳ ESPRIT-MONDE analyse ton action...");
 
     const currentLocation = await worldManager.getLocation(player.position.location);
     const time = await worldManager.getCurrentTime();
@@ -203,7 +211,7 @@ class EspritMondeBot {
     );
 
     playerManager.addToHistory(player, actionText, calculatedConsequences);
-    await database.savePlayer(phoneNumber, player);
+    await database.savePlayer(from, player);
 
     const narrativeContext = {
       action: actionText,
@@ -229,15 +237,17 @@ class EspritMondeBot {
       response += `\n\n⚡ Événements: ${calculatedConsequences.events.join(', ')}`;
     }
 
-    await this.sendMessage(phoneNumber, response);
+    await this.sendMessage(from, response);
 
     if (!playerManager.isAlive(player)) {
-      await this.sendMessage(phoneNumber, "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer.");
+      await this.sendMessage(from, "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer.");
     }
   }
 
-  async sendWelcomeMessage(phoneNumber, player) {
-    const welcome = `🌆 **Bienvenue à LIVIUM** 🌆
+  async sendWelcomeMessage(chatId, player, isGroup = false) {
+    const greeting = isGroup ? `🎮 ${player.name}, bienvenue dans ESPRIT-MONDE !` : `🌆 **Bienvenue à LIVIUM** 🌆`;
+
+    const welcome = `${greeting}
 
 Tu es ${player.name}, un habitant de Livium, ville où chaque action a des conséquences.
 
@@ -262,10 +272,10 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
 🌟 Ton aventure commence maintenant. Que fais-tu ?`;
 
-    await this.sendMessage(phoneNumber, welcome);
+    await this.sendMessage(chatId, welcome);
   }
 
-  async sendHelpMessage(phoneNumber) {
+  async sendHelpMessage(chatId, isGroup = false) {
     const help = `📚 **GUIDE ESPRIT-MONDE**
 
 **Actions Libres:**
@@ -291,6 +301,10 @@ ${await worldManager.getLocationDescription(player.position.location)}
 • Quartier Riche
 • Zone Industrielle
 
+**Voyages:**
+• Tu peux voyager à travers Livium.
+• Pour aller dans un autre pays, utilise la commande /voyager [nom du pays].
+
 **Temps:**
 1h réelle = 1 jour dans le jeu
 Le monde évolue en temps réel
@@ -300,7 +314,7 @@ Le monde évolue en temps réel
 /help - Cette aide
 /start - Recommencer`;
 
-    await this.sendMessage(phoneNumber, help);
+    await this.sendMessage(chatId, help);
   }
 
   async sendMessage(to, text) {

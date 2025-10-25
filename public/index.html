@@ -253,16 +253,22 @@
         async function updateQR() {
             try {
                 const response = await fetch('/api/qr');
-                const data = await response.json();
-                const qrDiv = document.getElementById('qrcode');
-                
-                if (data.available && data.qr) {
-                    qrDiv.innerHTML = `<img src="${data.qr}" alt="QR Code WhatsApp">`;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    const qrDiv = document.getElementById('qrcode');
+
+                    if (data.available && data.qr) {
+                        qrDiv.innerHTML = `<img src="${data.qr}" alt="QR Code WhatsApp">`;
+                    } else {
+                        qrDiv.innerHTML = '<p class="qr-placeholder">⏳ En attente du QR Code...<br>Le bot est en train de se connecter.</p>';
+                    }
                 } else {
-                    qrDiv.innerHTML = '<p class="qr-placeholder">⏳ En attente du QR Code...<br>Le bot est en train de se connecter.</p>';
+                    throw new Error('Réponse non-JSON reçue');
                 }
             } catch (error) {
                 console.error('Erreur QR:', error);
+                document.getElementById('qrcode').innerHTML = '<p class="qr-placeholder">Erreur de chargement du QR Code. Veuillez réessayer.</p>';
             }
         }
 
@@ -270,13 +276,13 @@
             try {
                 const response = await fetch('/api/stats');
                 const stats = await response.json();
-                
+
                 document.getElementById('statusText').textContent = stats.status;
                 document.getElementById('uptime').textContent = stats.uptimeFormatted || '0s';
                 document.getElementById('players').textContent = stats.players;
                 document.getElementById('npcs').textContent = stats.npcs;
                 document.getElementById('locations').textContent = stats.locations;
-                
+
                 const indicator = document.getElementById('statusIndicator');
                 if (stats.connected) {
                     indicator.className = 'status-indicator connected';

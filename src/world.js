@@ -25,7 +25,7 @@ class WorldManager {
     const world = await database.getWorld();
     const elapsed = Date.now() - world.time.startTime;
     const hoursElapsed = Math.floor(elapsed / (3600000 / this.TIME_RATIO));
-    
+
     world.time.currentDay = Math.floor(hoursElapsed / 24) + 1;
     world.time.currentHour = hoursElapsed % 24;
 
@@ -66,27 +66,27 @@ class WorldManager {
   async getLocationDescription(locationId) {
     const location = await this.getLocation(locationId);
     const time = await this.getCurrentTime();
-    
+
     if (!location) return "Un endroit inconnu de Livium.";
 
     let desc = `📍 **${location.name}** (${time.period}, ${time.weather})\n`;
     desc += location.description;
-    
+
     if (location.danger > 60) {
       desc += "\n⚠️ Zone dangereuse";
     }
     if (location.police > 70) {
       desc += "\n👮 Forte présence policière";
     }
-    
+
     return desc;
   }
 
   calculateDistance(loc1, loc2) {
-    const locations = ['quartier_beton', 'centre_ville', 'marche', 'quartier_riche', 'zone_industrielle'];
+    const locations = ['quartier_beton', 'centre_ville', 'marche', 'quartier_riche', 'zone_industrielle', 'aeroport', 'paris', 'tokyo', 'new_york'];
     const idx1 = locations.indexOf(loc1);
     const idx2 = locations.indexOf(loc2);
-    
+
     if (idx1 === -1 || idx2 === -1) return 0;
     return Math.abs(idx1 - idx2) * 200;
   }
