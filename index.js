@@ -44,8 +44,13 @@ class EspritMondeBot {
         auth: state,
         printQRInTerminal: false,
         logger,
-        browser: ['ESPRIT-MONDE', 'Chrome', '1.0.0'],
-        defaultQueryTimeoutMs: undefined
+        browser: ['Ubuntu', 'Chrome', '128.0.6613.86'],
+        version: [2, 3000, 1025190524],
+        defaultQueryTimeoutMs: undefined,
+        getMessage: async key => {
+          console.log('⚠️ Message non déchiffré, retry demandé:', key);
+          return { conversation: '🔄 Réessaye d\'envoyer ton message' };
+        }
       };
 
       if (process.env.PROXY_URL) {
