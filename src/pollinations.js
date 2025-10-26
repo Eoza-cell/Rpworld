@@ -56,9 +56,9 @@ Narration immersive:`;
 
   getFallbackNarrative(context) {
     const narratives = [
-      `Tu avances dans ${context.location || 'les rues de Livium'}. L'atmosphère est tendue. Les passants t'observent avec méfiance.`,
+      `Tu avances dans ${context.location || 'les rues'}. L'atmosphère est tendue. Les passants t'observent avec méfiance.`,
       `${context.location || 'La zone'} est calme pour le moment. Tu ressens ${context.playerStats?.energy < 50 ? 'une grande fatigue' : 'l\'énergie couler en toi'}.`,
-      `Le temps passe. ${context.weather || 'Le ciel'} domine la scène. Tu continues ton chemin dans Livium.`
+      `Le temps passe. ${context.weather || 'Le ciel'} domine la scène. Tu continues ton chemin dans cette ville.`
     ];
     return narratives[Math.floor(Math.random() * narratives.length)];
   }

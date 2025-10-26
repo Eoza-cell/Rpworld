@@ -35,7 +35,7 @@ class EspritMondeBot {
     webServer.updateStatus('Initialisation du monde...', false);
 
     await worldManager.init();
-    console.log('✅ Monde de Livium initialisé');
+    console.log('✅ Monde ESPRIT-MONDE initialisé');
     webServer.updateStatus('Connexion à WhatsApp...', false);
 
     await this.connectToWhatsApp();
@@ -141,7 +141,7 @@ class EspritMondeBot {
         webServer.updatePlayerCount(playerCount);
       } catch (error) {
         console.error('Erreur traitement message:', error);
-        await this.sendMessage(from, "❌ Une erreur s\'est produite dans le monde de Livium...");
+        await this.sendMessage(from, "❌ Une erreur s\'est produite dans ESPRIT-MONDE...");
       }
     }
   }
@@ -219,7 +219,7 @@ class EspritMondeBot {
     }
 
     if (!playerManager.isAlive(player)) {
-      await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie à Livium.");
+      await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie.");
       return;
     }
 
@@ -302,11 +302,11 @@ class EspritMondeBot {
   }
 
   async sendWelcomeMessage(chatId, player, isGroup = false) {
-    const greeting = isGroup ? `🎮 ${player.name}, bienvenue dans ESPRIT-MONDE !` : `🌆 **Bienvenue à LIVIUM** 🌆`;
+    const greeting = isGroup ? `🎮 ${player.name}, bienvenue dans ESPRIT-MONDE !` : `🌍 **ESPRIT-MONDE** 🌍`;
 
     const welcome = `${greeting}
 
-Tu es ${player.name}, un habitant de Livium, ville où chaque action a des conséquences.
+Tu es ${player.name}, voyageur du monde où chaque action a des conséquences réelles.
 
 🎮 **SYSTÈME ESPRIT-MONDE**
 Une IA contrôle tout: le temps, les PNJ, les événements, et réagit à tes actions libres.
@@ -319,13 +319,14 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
 ✍️ **Comment jouer**
 Écris simplement ce que tu veux faire en langage naturel:
-- "Je vais au marché acheter du pain"
-- "Je cours vers le quartier riche"
-- "Je parle au barista"
+- "Je vais à Tokyo"
+- "Je me promène dans les rues"
+- "Je parle aux passants"
+- "J'achète de la nourriture"
 
 ⌨️ **Commandes**
 /stats - Voir tes statistiques
-/help - Aide
+/help - Aide complète
 
 🌟 Ton aventure commence maintenant. Que fais-tu ?`;
 
@@ -360,16 +361,18 @@ ${await worldManager.getLocationDescription(player.position.location)}
 /deposer [montant] - Déposer à la banque
 /retirer [montant] - Retirer de la banque
 
-**Lieux de Livium:**
-• Quartier Béton • Centre-Ville • Marché
-• Quartier Riche • Zone Industrielle`;
+**Villes du Monde:**
+🇫🇷 Paris • 🇯🇵 Tokyo • 🇺🇸 New York • 🇦🇪 Dubai
+🇬🇧 Londres • 🇧🇷 Rio • 🇦🇺 Sydney • 🇹🇷 Istanbul
+🇷🇺 Moscou • 🇹🇭 Bangkok • 🇺🇸 Los Angeles • 🇩🇪 Berlin
+🇨🇦 Montréal • 🇳🇱 Amsterdam • 🇰🇷 Séoul`;
 
     await this.sendMessage(chatId, help);
   }
 
   async showJobs(chatId, player) {
     const jobs = economy.getJobsList();
-    let message = '💼 **MÉTIERS DISPONIBLES À LIVIUM**\n\n';
+    let message = '💼 **MÉTIERS DISPONIBLES**\n\n';
 
     jobs.forEach(job => {
       const canApply = economy.canApplyForJob(player, job.id);
@@ -475,7 +478,7 @@ ${await worldManager.getLocationDescription(player.position.location)}
   }
 
   async showBank(chatId, player) {
-    const message = `🏦 **BANQUE DE LIVIUM**\n\n💰 Argent liquide: ${player.inventory.money}$\n🏦 Compte bancaire: ${player.inventory.bankAccount}$\n💎 Total: ${player.inventory.money + player.inventory.bankAccount}$\n\n/deposer [montant] - Déposer\n/retirer [montant] - Retirer`;
+    const message = `🏦 **BANQUE INTERNATIONALE**\n\n💰 Argent liquide: ${player.inventory.money}$\n🏦 Compte bancaire: ${player.inventory.bankAccount}$\n💎 Total: ${player.inventory.money + player.inventory.bankAccount}$\n\n/deposer [montant] - Déposer\n/retirer [montant] - Retirer`;
     await this.sendMessage(chatId, message);
   }
 

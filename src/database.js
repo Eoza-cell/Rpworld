@@ -30,26 +30,34 @@ class Database {
       'npcs.json': {
         "npc_1": {
           "id": "npc_1",
-          "name": "Marcus le Dealer",
-          "location": "quartier_beton",
-          "personality": "méfiant, opportuniste",
-          "attitude": 50,
+          "name": "Jean le Barista",
+          "location": "paris",
+          "personality": "amical, bavard, typiquement parisien",
+          "attitude": 70,
           "memory": []
         },
         "npc_2": {
           "id": "npc_2",
-          "name": "Sofia la Barista",
-          "location": "centre_ville",
-          "personality": "amicale, bavarde",
-          "attitude": 70,
+          "name": "Yuki la Guide",
+          "location": "tokyo",
+          "personality": "polie, serviable, traditionnelle",
+          "attitude": 80,
           "memory": []
         },
         "npc_3": {
           "id": "npc_3",
-          "name": "Officer Durand",
-          "location": "centre_ville",
-          "personality": "sévère, vigilant",
+          "name": "Officer Smith",
+          "location": "new_york",
+          "personality": "sévère, vigilant, américain",
           "attitude": 30,
+          "memory": []
+        },
+        "npc_4": {
+          "id": "npc_4",
+          "name": "Ahmed le Commerçant",
+          "location": "dubai",
+          "personality": "riche, généreux, businessman",
+          "attitude": 60,
           "memory": []
         }
       },
@@ -61,35 +69,95 @@ class Database {
           "weatherCondition": "ensoleillé"
         },
         "locations": {
-          "quartier_beton": {
-            "name": "Quartier Béton",
-            "description": "Zone urbaine dense avec immeubles délabrés",
-            "danger": 60,
-            "police": 30
+          "paris": {
+            "name": "Paris, France",
+            "description": "La Ville Lumière - Tour Eiffel, Champs-Élysées, cafés parisiens et monuments historiques",
+            "danger": 25,
+            "police": 70
           },
-          "quartier_riche": {
-            "name": "Quartier Riche",
-            "description": "Zone résidentielle luxueuse avec villas et jardins",
+          "tokyo": {
+            "name": "Tokyo, Japon",
+            "description": "Métropole futuriste - Shibuya, néons, temples traditionnels et gratte-ciels",
+            "danger": 15,
+            "police": 85
+          },
+          "new_york": {
+            "name": "New York, USA",
+            "description": "La ville qui ne dort jamais - Times Square, Central Park, buildings emblématiques",
+            "danger": 40,
+            "police": 65
+          },
+          "dubai": {
+            "name": "Dubai, UAE",
+            "description": "Ville du luxe - Burj Khalifa, centres commerciaux géants, plages dorées",
             "danger": 10,
+            "police": 90
+          },
+          "londres": {
+            "name": "Londres, UK",
+            "description": "Capitale britannique - Big Ben, Tower Bridge, pubs anglais et palais royaux",
+            "danger": 20,
+            "police": 75
+          },
+          "rio": {
+            "name": "Rio de Janeiro, Brésil",
+            "description": "Ville festive - Christ Rédempteur, plages de Copacabana et Ipanema, favelas",
+            "danger": 60,
+            "police": 45
+          },
+          "sydney": {
+            "name": "Sydney, Australie",
+            "description": "Perle du Pacifique - Opéra, Harbour Bridge, plages de Bondi Beach",
+            "danger": 15,
             "police": 80
           },
-          "zone_industrielle": {
-            "name": "Zone Industrielle",
-            "description": "Usines et entrepôts abandonnés",
-            "danger": 70,
-            "police": 20
-          },
-          "centre_ville": {
-            "name": "Centre-Ville",
-            "description": "Cœur commercial animé de Livium",
-            "danger": 30,
+          "istanbul": {
+            "name": "Istanbul, Turquie",
+            "description": "Pont entre Orient et Occident - mosquées, Grand Bazar, Bosphore",
+            "danger": 35,
             "police": 60
           },
-          "marche": {
-            "name": "Marché",
-            "description": "Marché local avec échoppes et vendeurs",
-            "danger": 40,
-            "police": 50
+          "moscou": {
+            "name": "Moscou, Russie",
+            "description": "Capitale russe - Place Rouge, Kremlin, cathédrales et architecture soviétique",
+            "danger": 45,
+            "police": 70
+          },
+          "bangkok": {
+            "name": "Bangkok, Thaïlande",
+            "description": "Ville des Anges - temples dorés, marchés flottants, street food et tuk-tuks",
+            "danger": 30,
+            "police": 55
+          },
+          "los_angeles": {
+            "name": "Los Angeles, USA",
+            "description": "Cité des Anges - Hollywood, Venice Beach, palmiers et vie de star",
+            "danger": 50,
+            "police": 60
+          },
+          "berlin": {
+            "name": "Berlin, Allemagne",
+            "description": "Capitale culturelle - Porte de Brandebourg, street art, clubs underground",
+            "danger": 25,
+            "police": 75
+          },
+          "montreal": {
+            "name": "Montréal, Canada",
+            "description": "Métropole bilingue - Vieux-Montréal, festivals, poutine et culture québécoise",
+            "danger": 20,
+            "police": 70
+          },
+          "amsterdam": {
+            "name": "Amsterdam, Pays-Bas",
+            "description": "Ville des canaux - vélos, coffee shops, musées et architecture hollandaise",
+            "danger": 20,
+            "police": 75
+          },
+          "seoul": {
+            "name": "Séoul, Corée du Sud",
+            "description": "Mégapole high-tech - K-pop, palais royaux, street food et gratte-ciels modernes",
+            "danger": 15,
+            "police": 85
           }
         }
       }

@@ -67,7 +67,7 @@ class WorldManager {
     const location = await this.getLocation(locationId);
     const time = await this.getCurrentTime();
 
-    if (!location) return "Un endroit inconnu de Livium.";
+    if (!location) return "Un endroit inconnu du monde.";
 
     let desc = `📍 **${location.name}** (${time.period}, ${time.weather})\n`;
     desc += location.description;

@@ -1,7 +1,7 @@
 # 🌆 ESPRIT-MONDE - Bot WhatsApp RP Immersif
 
 ## 📋 Description
-Bot WhatsApp avec système de jeu de rôle immersif "ESPRIT-MONDE" gérant un monde complet (Livium) avec IA narrative, PNJ réactifs, barres d'état et système de temps synchronisé.
+Bot WhatsApp avec système de jeu de rôle immersif "ESPRIT-MONDE" gérant un monde complet avec des villes réelles (Paris, Tokyo, New York, etc.), IA narrative, PNJ réactifs, barres d'état et système de temps synchronisé.
 
 ## 🏗️ Architecture du Projet
 
@@ -32,7 +32,7 @@ Bot WhatsApp avec système de jeu de rôle immersif "ESPRIT-MONDE" gérant un mo
 
 ### ✅ Système de Jeu
 - ✅ Gestion des barres d'état (Santé, Énergie, Faim, Mental, Wanted)
-- ✅ Système de positions avec quartiers de Livium
+- ✅ Système de positions avec villes réelles du monde (15 villes)
 - ✅ Base de données JSON persistante
 - ✅ Système de temps synchronisé (1h IRL = 1 jour IG)
 - ✅ Cycles jour/nuit avec météo dynamique
@@ -105,10 +105,10 @@ Parfois WhatsApp débloque temporairement les IP. Réessayez plus tard.
 
 ### Actions Libres
 Le joueur écrit simplement ce qu'il veut faire:
-- "Je vais au marché acheter du pain"
-- "Je cours vers le quartier riche"  
-- "Je parle à Sofia la Barista"
-- "Je vole un sac et je fuis"
+- "Je vais à Tokyo"
+- "Je me promène dans les rues de Paris"  
+- "Je parle à Jean le Barista"
+- "Je prends un taxi pour New York"
 
 L'IA **ESPRIT-MONDE** analyse automatiquement l'action et génère:
 - Conséquences sur les stats
@@ -116,14 +116,24 @@ L'IA **ESPRIT-MONDE** analyse automatiquement l'action et génère:
 - Narration immersive
 - Événements dynamiques
 
-## 🗺️ Monde de Livium
+## 🗺️ Villes du Monde
 
-### Quartiers
-1. **Quartier Béton** - Zone urbaine dense, point de départ
-2. **Centre-Ville** - Cœur commercial animé
-3. **Marché** - Commerces et échanges
-4. **Quartier Riche** - Zone résidentielle luxueuse
-5. **Zone Industrielle** - Usines et entrepôts
+### Villes Disponibles (15)
+1. **🇫🇷 Paris, France** - La Ville Lumière
+2. **🇯🇵 Tokyo, Japon** - Métropole futuriste
+3. **🇺🇸 New York, USA** - La ville qui ne dort jamais
+4. **🇦🇪 Dubai, UAE** - Ville du luxe
+5. **🇬🇧 Londres, UK** - Capitale britannique
+6. **🇧🇷 Rio de Janeiro, Brésil** - Ville festive
+7. **🇦🇺 Sydney, Australie** - Perle du Pacifique
+8. **🇹🇷 Istanbul, Turquie** - Pont entre Orient et Occident
+9. **🇷🇺 Moscou, Russie** - Capitale russe
+10. **🇹🇭 Bangkok, Thaïlande** - Ville des Anges
+11. **🇺🇸 Los Angeles, USA** - Cité des Anges
+12. **🇩🇪 Berlin, Allemagne** - Capitale culturelle
+13. **🇨🇦 Montréal, Canada** - Métropole bilingue
+14. **🇳🇱 Amsterdam, Pays-Bas** - Ville des canaux
+15. **🇰🇷 Séoul, Corée du Sud** - Mégapole high-tech
 
 ### Système de Temps
 - **1h réelle = 1 jour dans le jeu**

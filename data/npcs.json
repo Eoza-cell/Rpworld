@@ -1,26 +1,34 @@
 {
   "npc_1": {
     "id": "npc_1",
-    "name": "Marcus le Dealer",
-    "location": "quartier_beton",
-    "personality": "méfiant, opportuniste",
-    "attitude": 50,
+    "name": "Jean le Barista",
+    "location": "paris",
+    "personality": "amical, bavard, typiquement parisien",
+    "attitude": 70,
     "memory": []
   },
   "npc_2": {
     "id": "npc_2",
-    "name": "Sofia la Barista",
-    "location": "centre_ville",
-    "personality": "amicale, bavarde",
-    "attitude": 70,
+    "name": "Yuki la Guide",
+    "location": "tokyo",
+    "personality": "polie, serviable, traditionnelle",
+    "attitude": 80,
     "memory": []
   },
   "npc_3": {
     "id": "npc_3",
-    "name": "Officer Durand",
-    "location": "centre_ville",
-    "personality": "sévère, vigilant",
+    "name": "Officer Smith",
+    "location": "new_york",
+    "personality": "sévère, vigilant, américain",
     "attitude": 30,
+    "memory": []
+  },
+  "npc_4": {
+    "id": "npc_4",
+    "name": "Ahmed le Commerçant",
+    "location": "dubai",
+    "personality": "riche, généreux, businessman",
+    "attitude": 60,
     "memory": []
   }
 }
