@@ -72,7 +72,7 @@ class EspritMondeBot {
             try {
               const code = await this.sock.requestPairingCode(phoneNumber);
               const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
-              
+
               console.log('\n🔑 CODE DE JUMELAGE WHATSAPP');
               console.log('━'.repeat(50));
               console.log(`📱 Code: ${formattedCode}`);
@@ -200,101 +200,6 @@ class EspritMondeBot {
         await this.startCharacterCreation(from, player, isGroup);
       } else {
         await this.sendWelcomeMessage(from, player, isGroup);
-
-
-  async startCharacterCreation(chatId, player, isGroup = false) {
-    player.creationStep = 'name';
-    await database.savePlayer(player.phoneNumber, player);
-    
-    const message = `🎭 **CRÉATION DE PERSONNAGE**
-
-Bienvenue dans ESPRIT-MONDE ! Avant de commencer, créons ton personnage.
-
-📝 **Étape 1/3 : Nom**
-Quel est le nom de ton personnage ?
-
-Exemple: Marc Dubois, Sarah Chen, etc.`;
-
-    await this.sendMessage(chatId, message);
-  }
-
-  async handleCharacterCreation(chatId, player, text, isGroup = false) {
-    switch (player.creationStep) {
-      case 'name':
-        player.customName = text.trim();
-        player.creationStep = 'age';
-        await database.savePlayer(player.phoneNumber, player);
-        await this.sendMessage(chatId, `✅ Nom: ${player.customName}\n\n🎂 **Étape 2/3 : Âge**\nQuel âge a ${player.customName} ?\n\nTape un nombre entre 18 et 80.`);
-        break;
-
-      case 'age':
-        const age = parseInt(text);
-        if (isNaN(age) || age < 18 || age > 80) {
-          await this.sendMessage(chatId, "❌ Âge invalide. Entre 18 et 80 ans.");
-          return;
-        }
-        player.age = age;
-        player.creationStep = 'gender';
-        await database.savePlayer(player.phoneNumber, player);
-        await this.sendMessage(chatId, `✅ Âge: ${age} ans\n\n⚧️ **Étape 3/4 : Genre**\nQuel est le genre de ${player.customName} ?\n\nTape: **homme** ou **femme**`);
-        break;
-
-      case 'gender':
-        const gender = text.toLowerCase().trim();
-        if (gender !== 'homme' && gender !== 'femme') {
-          await this.sendMessage(chatId, "❌ Genre invalide. Tape 'homme' ou 'femme'.");
-          return;
-        }
-        player.gender = gender === 'homme' ? 'male' : 'female';
-        player.creationStep = 'background';
-        await database.savePlayer(player.phoneNumber, player);
-        await this.sendMessage(chatId, `✅ Genre: ${gender}\n\n🎭 **Étape 4/4 : Background**\nQuel est le passé de ${player.customName} ?\n\n1️⃣ **athletique** - +10 Santé/Énergie, +10 Combat\n2️⃣ **intellectuel** - +15 Mental, +15 Négociation\n3️⃣ **streetwise** - -10 Wanted, +15 Discrétion\n4️⃣ **riche** - +2000$ cash, +5000$ banque\n5️⃣ **mecano** - +20 Réparation, +10 Conduite\n\nTape le nom du background choisi.`);
-        break;
-
-      case 'background':
-        const validBackgrounds = ['athletique', 'intellectuel', 'streetwise', 'riche', 'mecano'];
-        const bg = text.toLowerCase().trim();
-        
-        if (!validBackgrounds.includes(bg)) {
-          await this.sendMessage(chatId, "❌ Background invalide. Choisis parmi: athletique, intellectuel, streetwise, riche, mecano");
-          return;
-        }
-        
-        await playerManager.createCharacter(player, player.customName, player.age, bg);
-        delete player.creationStep;
-        await database.savePlayer(player.phoneNumber, player);
-        
-        await this.sendMessage(chatId, `🎉 **PERSONNAGE CRÉÉ !**
-
-👤 ${player.customName}, ${player.age} ans
-🎭 Background: ${bg}
-
-${playerManager.getStatsDisplay(player)}
-
-📍 Position: Paris, France
-
-✨ Ton aventure commence maintenant ! Que veux-tu faire ?`);
-        break;
-    }
-  }
-
-  async tagAllMembers(groupId) {
-    try {
-      const groupMetadata = await this.sock.groupMetadata(groupId);
-      const participants = groupMetadata.participants.map(p => p.id);
-      
-      let mentions = participants.join(', @');
-      let message = `📢 **ANNONCE ESPRIT-MONDE**\n\n@${mentions}\n\nLe bot est actif ! Tapez /start pour jouer.`;
-      
-      await this.sock.sendMessage(groupId, {
-        text: message,
-        mentions: participants
-      });
-    } catch (error) {
-      console.error('Erreur tag all:', error);
-    }
-  }
-
       }
       return;
     }
@@ -315,12 +220,12 @@ ${playerManager.getStatsDisplay(player)}
       const location = await worldManager.getLocationDescription(player.position.location);
       const familyInfo = familyManager.getChildrenDisplay(player);
       const pregnancyCheck = await familyManager.checkPregnancy(player);
-      
+
       let message = `${stats}\n\n${location}\n\n${familyInfo}`;
       if (pregnancyCheck) {
         message += `\n\n${pregnancyCheck.message}`;
       }
-      
+
       await this.sendMessage(from, message);
       return;
     }
@@ -336,9 +241,9 @@ ${playerManager.getStatsDisplay(player)}
       const district = text.split(' ')[1];
       const hasVehicle = player.inventory.vehicles.length > 0;
       const hasLicense = player.licenses.driving;
-      
+
       const result = await movementManager.move(player, district, hasVehicle, hasLicense);
-      
+
       if (result.accident) {
         playerManager.updateStats(player, { health: -result.damage });
         playerManager.addMoney(player, -500);
@@ -348,7 +253,7 @@ ${playerManager.getStatsDisplay(player)}
         await worldManager.advanceTime(result.timeCost);
         await database.savePlayer(player.phoneNumber, player);
       }
-      
+
       await this.sendMessage(from, result.message);
       return;
     }
@@ -356,7 +261,7 @@ ${playerManager.getStatsDisplay(player)}
     if (text.toLowerCase().startsWith('/nommer_enfant ')) {
       const parts = text.split(' ');
       const name = parts.slice(1).join(' ');
-      
+
       if (player.family?.children && player.family.children.length > 0) {
         const lastChild = player.family.children[player.family.children.length - 1];
         if (!lastChild.name) {
@@ -443,7 +348,7 @@ ${playerManager.getStatsDisplay(player)}
     // Vérification horaires de travail
     const time = await worldManager.getCurrentTime();
     const workCheck = await worldManager.shouldBeAtWork(player, time.hour);
-    
+
     if (workCheck.shouldBe && player.job.current && !player.job.atWork) {
       const boss = await npcManager.getBossForJob(player.job.current);
       await this.sendMessage(from, `⚠️ ${boss} te rappelle que tu devrais être au travail (${workCheck.workPeriod}) !\n💼 Ton patron n'est pas content de ton retard.\n\nTape /travailler pour aller bosser.`);
@@ -576,7 +481,6 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
     await this.sendMessage(chatId, welcome);
   }
-}
 
   async sendHelpMessage(chatId, isGroup = false) {
     const help = `📚 **GUIDE ESPRIT-MONDE**
@@ -651,7 +555,17 @@ ${await worldManager.getLocationDescription(player.position.location)}
   async applyForJob(chatId, player, jobId) {
     const canApply = economy.canApplyForJob(player, jobId);
 
+    if (!canApply.can) {
+      await this.sendMessage(chatId, `❌ ${canApply.reason}`);
+      return;
+    }
 
+    const job = economy.jobs[jobId];
+    playerManager.setJob(player, job.name, job.salary);
+    await database.savePlayer(player.phoneNumber, player);
+
+    await this.sendMessage(chatId, `✅ Félicitations ! Tu es maintenant ${job.name}.\n💰 Salaire: ${job.salary}$/mois\n\nTravaille pour gagner de l'argent et de l'expérience !`);
+  }
 
   async goToWork(chatId, player) {
     if (!player.job.current) {
@@ -683,22 +597,10 @@ ${await worldManager.getLocationDescription(player.position.location)}
     const hoursWorked = Math.min(5, Math.floor((Date.now() - player.job.lastWorkCheck) / 60000));
     const result = playerManager.addWorkHours(player, hoursWorked);
     result.player.job.atWork = false;
-    
+
     await database.savePlayer(player.phoneNumber, result.player);
 
     await this.sendMessage(chatId, `✅ Travail terminé !\n⏱️ Heures: ${hoursWorked}h\n💰 Salaire: +${result.earnings}$\n\nBon repos !`);
-  }
-
-    if (!canApply.can) {
-      await this.sendMessage(chatId, `❌ ${canApply.reason}`);
-      return;
-    }
-
-    const job = economy.jobs[jobId];
-    playerManager.setJob(player, job.name, job.salary);
-    await database.savePlayer(player.phoneNumber, player);
-
-    await this.sendMessage(chatId, `✅ Félicitations ! Tu es maintenant ${job.name}.\n💰 Salaire: ${job.salary}$/mois\n\nTravaille pour gagner de l'argent et de l'expérience !`);
   }
 
   async showLicenses(chatId, player) {
@@ -808,6 +710,99 @@ ${await worldManager.getLocationDescription(player.position.location)}
       await this.sock.sendMessage(to, { text });
     } catch (error) {
       console.error('Erreur envoi message:', error);
+    }
+  }
+
+  async startCharacterCreation(chatId, player, isGroup = false) {
+    player.creationStep = 'name';
+    await database.savePlayer(player.phoneNumber, player);
+
+    const message = `🎭 **CRÉATION DE PERSONNAGE**
+
+Bienvenue dans ESPRIT-MONDE ! Avant de commencer, créons ton personnage.
+
+📝 **Étape 1/3 : Nom**
+Quel est le nom de ton personnage ?
+
+Exemple: Marc Dubois, Sarah Chen, etc.`;
+
+    await this.sendMessage(chatId, message);
+  }
+
+  async handleCharacterCreation(chatId, player, text, isGroup = false) {
+    switch (player.creationStep) {
+      case 'name':
+        player.customName = text.trim();
+        player.creationStep = 'age';
+        await database.savePlayer(player.phoneNumber, player);
+        await this.sendMessage(chatId, `✅ Nom: ${player.customName}\n\n🎂 **Étape 2/3 : Âge**\nQuel âge a ${player.customName} ?\n\nTape un nombre entre 18 et 80.`);
+        break;
+
+      case 'age':
+        const age = parseInt(text);
+        if (isNaN(age) || age < 18 || age > 80) {
+          await this.sendMessage(chatId, "❌ Âge invalide. Entre 18 et 80 ans.");
+          return;
+        }
+        player.age = age;
+        player.creationStep = 'gender';
+        await database.savePlayer(player.phoneNumber, player);
+        await this.sendMessage(chatId, `✅ Âge: ${age} ans\n\n⚧️ **Étape 3/4 : Genre**\nQuel est le genre de ${player.customName} ?\n\nTape: **homme** ou **femme**`);
+        break;
+
+      case 'gender':
+        const gender = text.toLowerCase().trim();
+        if (gender !== 'homme' && gender !== 'femme') {
+          await this.sendMessage(chatId, "❌ Genre invalide. Tape 'homme' ou 'femme'.");
+          return;
+        }
+        player.gender = gender === 'homme' ? 'male' : 'female';
+        player.creationStep = 'background';
+        await database.savePlayer(player.phoneNumber, player);
+        await this.sendMessage(chatId, `✅ Genre: ${gender}\n\n🎭 **Étape 4/4 : Background**\nQuel est le passé de ${player.customName} ?\n\n1️⃣ **athletique** - +1 Santé/Énergie, +1 Combat\n2️⃣ **intellectuel** - +1 Mental, +1 Négociation\n3️⃣ **streetwise** - -1 Wanted, +1 Discrétion\n4️⃣ **riche** - +2000$ cash, +5000$ banque\n5️⃣ **mecano** - +20 Réparation, +10 Conduite\n\nTape le nom du background choisi.`);
+        break;
+
+      case 'background':
+        const validBackgrounds = ['athletique', 'intellectuel', 'streetwise', 'riche', 'mecano'];
+        const bg = text.toLowerCase().trim();
+
+        if (!validBackgrounds.includes(bg)) {
+          await this.sendMessage(chatId, "❌ Background invalide. Choisis parmi: athletique, intellectuel, streetwise, riche, mecano");
+          return;
+        }
+
+        await playerManager.createCharacter(player, player.customName, player.age, bg);
+        delete player.creationStep;
+        await database.savePlayer(player.phoneNumber, player);
+
+        await this.sendMessage(chatId, `🎉 **PERSONNAGE CRÉÉ !**
+
+👤 ${player.customName}, ${player.age} ans
+🎭 Background: ${bg}
+
+${playerManager.getStatsDisplay(player)}
+
+📍 Position: Paris, France
+
+✨ Ton aventure commence maintenant ! Que veux-tu faire ?`);
+        break;
+    }
+  }
+
+  async tagAllMembers(groupId) {
+    try {
+      const groupMetadata = await this.sock.groupMetadata(groupId);
+      const participants = groupMetadata.participants.map(p => p.id);
+
+      let mentions = participants.join(', @');
+      let message = `📢 **ANNONCE ESPRIT-MONDE**\n\n@${mentions}\n\nLe bot est actif ! Tapez /start pour jouer.`;
+
+      await this.sock.sendMessage(groupId, {
+        text: message,
+        mentions: participants
+      });
+    } catch (error) {
+      console.error('Erreur tag all:', error);
     }
   }
 }
