@@ -15,6 +15,9 @@ import npcManager from './src/npcs.js';
 import pollinations from './src/pollinations.js';
 import webServer from './src/webServer.js';
 import economy from './src/economy.js';
+import movementManager from './src/movement.js';
+import familyManager from './src/family.js';
+import mapGenerator from './src/mapGenerator.js';
 
 dotenv.config();
 
@@ -231,9 +234,21 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
           return;
         }
         player.age = age;
+        player.creationStep = 'gender';
+        await database.savePlayer(player.phoneNumber, player);
+        await this.sendMessage(chatId, `✅ Âge: ${age} ans\n\n⚧️ **Étape 3/4 : Genre**\nQuel est le genre de ${player.customName} ?\n\nTape: **homme** ou **femme**`);
+        break;
+
+      case 'gender':
+        const gender = text.toLowerCase().trim();
+        if (gender !== 'homme' && gender !== 'femme') {
+          await this.sendMessage(chatId, "❌ Genre invalide. Tape 'homme' ou 'femme'.");
+          return;
+        }
+        player.gender = gender === 'homme' ? 'male' : 'female';
         player.creationStep = 'background';
         await database.savePlayer(player.phoneNumber, player);
-        await this.sendMessage(chatId, `✅ Âge: ${age} ans\n\n🎭 **Étape 3/3 : Background**\nQuel est le passé de ${player.customName} ?\n\n1️⃣ **athletique** - +10 Santé/Énergie, +10 Combat\n2️⃣ **intellectuel** - +15 Mental, +15 Négociation\n3️⃣ **streetwise** - -10 Wanted, +15 Discrétion\n4️⃣ **riche** - +2000$ cash, +5000$ banque\n5️⃣ **mecano** - +20 Réparation, +10 Conduite\n\nTape le nom du background choisi.`);
+        await this.sendMessage(chatId, `✅ Genre: ${gender}\n\n🎭 **Étape 4/4 : Background**\nQuel est le passé de ${player.customName} ?\n\n1️⃣ **athletique** - +10 Santé/Énergie, +10 Combat\n2️⃣ **intellectuel** - +15 Mental, +15 Négociation\n3️⃣ **streetwise** - -10 Wanted, +15 Discrétion\n4️⃣ **riche** - +2000$ cash, +5000$ banque\n5️⃣ **mecano** - +20 Réparation, +10 Conduite\n\nTape le nom du background choisi.`);
         break;
 
       case 'background':
@@ -298,7 +313,60 @@ ${playerManager.getStatsDisplay(player)}
     if (text.toLowerCase() === '/stats') {
       const stats = playerManager.getStatsDisplay(player);
       const location = await worldManager.getLocationDescription(player.position.location);
-      await this.sendMessage(from, `${stats}\n\n${location}`);
+      const familyInfo = familyManager.getChildrenDisplay(player);
+      const pregnancyCheck = await familyManager.checkPregnancy(player);
+      
+      let message = `${stats}\n\n${location}\n\n${familyInfo}`;
+      if (pregnancyCheck) {
+        message += `\n\n${pregnancyCheck.message}`;
+      }
+      
+      await this.sendMessage(from, message);
+      return;
+    }
+
+    if (text.toLowerCase() === '/carte' || text.toLowerCase() === '/map') {
+      const map = mapGenerator.generateCityMap(player.position.location, player.position.x, player.position.y);
+      const surroundings = movementManager.getSurroundings(player.position.location, player.position.x, player.position.y);
+      await this.sendMessage(from, `${map}\n\n${surroundings}`);
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/aller ')) {
+      const district = text.split(' ')[1];
+      const hasVehicle = player.inventory.vehicles.length > 0;
+      const hasLicense = player.licenses.driving;
+      
+      const result = await movementManager.move(player, district, hasVehicle, hasLicense);
+      
+      if (result.accident) {
+        playerManager.updateStats(player, { health: -result.damage });
+        playerManager.addMoney(player, -500);
+        await database.savePlayer(player.phoneNumber, player);
+      } else if (result.success) {
+        playerManager.updateStats(player, { energy: result.energyCost });
+        await worldManager.advanceTime(result.timeCost);
+        await database.savePlayer(player.phoneNumber, player);
+      }
+      
+      await this.sendMessage(from, result.message);
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/nommer_enfant ')) {
+      const parts = text.split(' ');
+      const name = parts.slice(1).join(' ');
+      
+      if (player.family?.children && player.family.children.length > 0) {
+        const lastChild = player.family.children[player.family.children.length - 1];
+        if (!lastChild.name) {
+          const result = await familyManager.nameChild(player, lastChild.id, name);
+          await database.savePlayer(player.phoneNumber, player);
+          await this.sendMessage(from, result.message);
+          return;
+        }
+      }
+      await this.sendMessage(from, "❌ Pas d'enfant à nommer");
       return;
     }
 
@@ -386,6 +454,23 @@ ${playerManager.getStatsDisplay(player)}
   }
 
   async handleFreeAction(from, player, actionText, isGroup) {
+    // Validation physique réaliste
+    const validation = playerManager.validateAction(actionText, player);
+    if (!validation.valid) {
+      await this.sendMessage(from, validation.reason);
+      return;
+    }
+
+    // Vérifier grossesse
+    const pregnancyCheck = await familyManager.checkPregnancy(player);
+    if (pregnancyCheck?.status === 'birth') {
+      await this.sendMessage(from, pregnancyCheck.message);
+      await database.savePlayer(player.phoneNumber, player);
+    }
+
+    // Mise à jour des enfants
+    await familyManager.updateChildren(player);
+
     await this.sendMessage(from, "⏳ ESPRIT-MONDE analyse ton action...");
 
     const currentLocation = await worldManager.getLocation(player.position.location);
@@ -491,12 +576,14 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
     await this.sendMessage(chatId, welcome);
   }
+}
 
   async sendHelpMessage(chatId, isGroup = false) {
     const help = `📚 **GUIDE ESPRIT-MONDE**
 
 **Actions Libres:**
 Écris ce que tu veux faire naturellement. L'IA comprend et réagit.
+⚠️ Attention: Pas de super-pouvoirs ! Tu es un humain normal.
 
 **Barres d'État:**
 ❤️ Santé - Si 0%, tu meurs
@@ -506,12 +593,19 @@ ${await worldManager.getLocationDescription(player.position.location)}
 🚨 Wanted - Niveau de recherche police
 
 **Commandes Principales:**
-/stats - Tes statistiques
+/stats - Tes statistiques complètes
+/carte - Carte de ta ville
+/aller [quartier] - Se déplacer (ex: /aller marais)
 /metiers - Voir les métiers
+/travailler - Aller bosser (optionnel)
+/finir - Finir le travail
 /permis - Voir les permis
 /vehicules - Voir les véhicules
 /banque - Compte bancaire
 /help - Cette aide
+
+**Famille:**
+/nommer_enfant [prénom] - Nommer ton nouveau-né
 
 **Économie:**
 /postuler [métier] - Postuler à un métier
@@ -519,6 +613,16 @@ ${await worldManager.getLocationDescription(player.position.location)}
 /acheter_vehicule [type] - Acheter un véhicule
 /deposer [montant] - Déposer à la banque
 /retirer [montant] - Retirer de la banque
+
+**🚗 Déplacement:**
+- Sans permis en voiture = ACCIDENTS possibles !
+- Distances réalistes calculées en mètres
+- Regarde la carte pour savoir où aller
+
+**⏰ Horloge du Monde:**
+- 1h réelle = 1 jour complet (24h)
+- Travail: 8h-13h (matin) et 19h+ (soir)
+- Le temps avance automatiquement
 
 **Villes du Monde:**
 🇫🇷 Paris • 🇯🇵 Tokyo • 🇺🇸 New York • 🇦🇪 Dubai

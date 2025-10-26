@@ -31,14 +31,25 @@ class WorldManager {
     const elapsed = Date.now() - world.time.startTime;
     const hoursElapsed = Math.floor(elapsed / (3600000 / this.TIME_RATIO));
 
+    const oldHour = world.time.currentHour;
     world.time.currentDay = Math.floor(hoursElapsed / 24) + 1;
     world.time.currentHour = hoursElapsed % 24;
 
-    if (Math.random() < 0.1) {
+    // Changement de météo toutes les 3 heures
+    if (Math.floor(oldHour / 3) !== Math.floor(world.time.currentHour / 3)) {
       world.time.weatherCondition = this.weatherTypes[Math.floor(Math.random() * this.weatherTypes.length)];
     }
 
     await database.saveWorld(world);
+    return { hourChanged: oldHour !== world.time.currentHour, newHour: world.time.currentHour };
+  }
+
+  async advanceTime(minutes) {
+    const world = await database.getWorld();
+    const hoursToAdd = minutes / 60;
+    world.time.startTime -= hoursToAdd * (3600000 / this.TIME_RATIO);
+    await database.saveWorld(world);
+    await this.updateTime();
   }
 
   isWorkHours(hour) {

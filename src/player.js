@@ -7,6 +7,7 @@ class PlayerManager {
       name,
       customName: null,
       age: null,
+      gender: null,
       background: null,
       characterCreated: false,
       stats: {
@@ -15,6 +16,11 @@ class PlayerManager {
         hunger: 100,
         mental: 100,
         wanted: 0
+      },
+      family: {
+        pregnant: false,
+        pregnancyStart: null,
+        children: []
       },
       position: {
         location: "paris",
@@ -242,6 +248,30 @@ class PlayerManager {
   isHungry(player) {
     return player.stats.hunger < 30;
   }
+
+  validateAction(action, player) {
+    const lowerAction = action.toLowerCase();
+    
+    // Vérifier les actions physiquement impossibles
+    if (lowerAction.includes('sauter') && (lowerAction.includes('10m') || lowerAction.includes('10 m'))) {
+      return { valid: false, reason: "❌ Action impossible: Un humain ne peut pas sauter 10m de haut !" };
+    }
+
+    if (lowerAction.includes('voler') && !lowerAction.includes('voleur')) {
+      return { valid: false, reason: "❌ Action impossible: Les humains ne peuvent pas voler !" };
+    }
+
+    if (lowerAction.includes('chute') && lowerAction.includes('survivre')) {
+      const heightMatch = action.match(/(\d+)\s*m/);
+      if (heightMatch && parseInt(heightMatch[1]) > 15) {
+        return { valid: false, reason: "❌ Une chute de plus de 15m est mortelle pour un humain !" };
+      }
+    }
+
+    return { valid: true };
+  }
 }
+
+export default new PlayerManager();
 
 export default new PlayerManager();
