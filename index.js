@@ -155,37 +155,143 @@ class EspritMondeBot {
       const from = message.key.remoteJid;
       const text = message.message.conversation ||
                    message.message.extendedTextMessage?.text || '';
-      const participant = message.key.participant; // Get participant for group messages
+      const participant = message.key.participant;
+      const pushName = message.pushName || 'Joueur';
 
       if (!text) continue;
 
       const isGroup = from.endsWith('@g.us');
 
-      if (isGroup && !text.startsWith('/')) { // Ignore messages in groups that are not commands
+      if (isGroup && !text.startsWith('/')) {
         continue;
       }
 
-      console.log(`📨 Message de ${from}${participant ? ` (via ${participant})` : ''}: ${text}`);
+      console.log(`📨 Message de ${from}${participant ? ` (${participant})` : ''}: ${text}`);
 
       try {
-        await this.processPlayerAction(from, text, isGroup, participant);
+        await this.processPlayerAction(from, text, isGroup, participant, pushName);
 
         const playerCount = Object.keys(database.players).length;
         webServer.updatePlayerCount(playerCount);
       } catch (error) {
         console.error('Erreur traitement message:', error);
-        await this.sendMessage(from, "❌ Une erreur s\'est produite dans ESPRIT-MONDE...");
+        await this.sendMessage(from, "❌ Une erreur s'est produite dans ESPRIT-MONDE...");
       }
     }
   }
 
-  async processPlayerAction(from, text, isGroup, participant) {
+  async processPlayerAction(from, text, isGroup, participant, pushName) {
     const phoneNumber = isGroup ? participant.replace('@s.whatsapp.net', '') : from.replace('@s.whatsapp.net', '');
-    const pushName = text.split(' ')[0]; // This might not be the player's name, consider using message.pushName if available
     const player = await playerManager.getOrCreatePlayer(phoneNumber, pushName);
 
+    // Commande tag all (admin seulement en groupe)
+    if (text.toLowerCase() === '/tagall' || text.toLowerCase() === '/everyone') {
+      if (isGroup) {
+        await this.tagAllMembers(from);
+      }
+      return;
+    }
+
     if (text.toLowerCase() === '/start' || text.toLowerCase() === '/commencer') {
-      await this.sendWelcomeMessage(from, player, isGroup);
+      if (!player.characterCreated) {
+        await this.startCharacterCreation(from, player, isGroup);
+      } else {
+        await this.sendWelcomeMessage(from, player, isGroup);
+
+
+  async startCharacterCreation(chatId, player, isGroup = false) {
+    player.creationStep = 'name';
+    await database.savePlayer(player.phoneNumber, player);
+    
+    const message = `🎭 **CRÉATION DE PERSONNAGE**
+
+Bienvenue dans ESPRIT-MONDE ! Avant de commencer, créons ton personnage.
+
+📝 **Étape 1/3 : Nom**
+Quel est le nom de ton personnage ?
+
+Exemple: Marc Dubois, Sarah Chen, etc.`;
+
+    await this.sendMessage(chatId, message);
+  }
+
+  async handleCharacterCreation(chatId, player, text, isGroup = false) {
+    switch (player.creationStep) {
+      case 'name':
+        player.customName = text.trim();
+        player.creationStep = 'age';
+        await database.savePlayer(player.phoneNumber, player);
+        await this.sendMessage(chatId, `✅ Nom: ${player.customName}\n\n🎂 **Étape 2/3 : Âge**\nQuel âge a ${player.customName} ?\n\nTape un nombre entre 18 et 80.`);
+        break;
+
+      case 'age':
+        const age = parseInt(text);
+        if (isNaN(age) || age < 18 || age > 80) {
+          await this.sendMessage(chatId, "❌ Âge invalide. Entre 18 et 80 ans.");
+          return;
+        }
+        player.age = age;
+        player.creationStep = 'background';
+        await database.savePlayer(player.phoneNumber, player);
+        await this.sendMessage(chatId, `✅ Âge: ${age} ans\n\n🎭 **Étape 3/3 : Background**\nQuel est le passé de ${player.customName} ?\n\n1️⃣ **athletique** - +10 Santé/Énergie, +10 Combat\n2️⃣ **intellectuel** - +15 Mental, +15 Négociation\n3️⃣ **streetwise** - -10 Wanted, +15 Discrétion\n4️⃣ **riche** - +2000$ cash, +5000$ banque\n5️⃣ **mecano** - +20 Réparation, +10 Conduite\n\nTape le nom du background choisi.`);
+        break;
+
+      case 'background':
+        const validBackgrounds = ['athletique', 'intellectuel', 'streetwise', 'riche', 'mecano'];
+        const bg = text.toLowerCase().trim();
+        
+        if (!validBackgrounds.includes(bg)) {
+          await this.sendMessage(chatId, "❌ Background invalide. Choisis parmi: athletique, intellectuel, streetwise, riche, mecano");
+          return;
+        }
+        
+        await playerManager.createCharacter(player, player.customName, player.age, bg);
+        delete player.creationStep;
+        await database.savePlayer(player.phoneNumber, player);
+        
+        await this.sendMessage(chatId, `🎉 **PERSONNAGE CRÉÉ !**
+
+👤 ${player.customName}, ${player.age} ans
+🎭 Background: ${bg}
+
+${playerManager.getStatsDisplay(player)}
+
+📍 Position: Paris, France
+
+✨ Ton aventure commence maintenant ! Que veux-tu faire ?`);
+        break;
+    }
+  }
+
+  async tagAllMembers(groupId) {
+    try {
+      const groupMetadata = await this.sock.groupMetadata(groupId);
+      const participants = groupMetadata.participants.map(p => p.id);
+      
+      let mentions = participants.join(', @');
+      let message = `📢 **ANNONCE ESPRIT-MONDE**\n\n@${mentions}\n\nLe bot est actif ! Tapez /start pour jouer.`;
+      
+      await this.sock.sendMessage(groupId, {
+        text: message,
+        mentions: participants
+      });
+    } catch (error) {
+      console.error('Erreur tag all:', error);
+    }
+  }
+
+      }
+      return;
+    }
+
+    // Gestion création de personnage
+    if (!player.characterCreated && player.creationStep) {
+      await this.handleCharacterCreation(from, player, text, isGroup);
+      return;
+    }
+
+    if (!player.characterCreated) {
+      await this.sendMessage(from, "⚠️ Tu dois d'abord créer ton personnage avec /start");
       return;
     }
 
@@ -251,9 +357,29 @@ class EspritMondeBot {
       return;
     }
 
+    if (text.toLowerCase() === '/travailler' || text.toLowerCase() === '/work') {
+      await this.goToWork(from, player);
+      return;
+    }
+
+    if (text.toLowerCase() === '/finir' || text.toLowerCase() === '/finish') {
+      await this.finishWork(from, player);
+      return;
+    }
+
     if (!playerManager.isAlive(player)) {
       await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie.");
       return;
+    }
+
+    // Vérification horaires de travail
+    const time = await worldManager.getCurrentTime();
+    const workCheck = await worldManager.shouldBeAtWork(player, time.hour);
+    
+    if (workCheck.shouldBe && player.job.current && !player.job.atWork) {
+      const boss = await npcManager.getBossForJob(player.job.current);
+      await this.sendMessage(from, `⚠️ ${boss} te rappelle que tu devrais être au travail (${workCheck.workPeriod}) !\n💼 Ton patron n'est pas content de ton retard.\n\nTape /travailler pour aller bosser.`);
+      await npcManager.updateNPCAttitude(boss, -5);
     }
 
     await this.handleFreeAction(from, player, text, isGroup);
@@ -420,6 +546,44 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
   async applyForJob(chatId, player, jobId) {
     const canApply = economy.canApplyForJob(player, jobId);
+
+
+
+  async goToWork(chatId, player) {
+    if (!player.job.current) {
+      await this.sendMessage(chatId, "❌ Tu n'as pas de travail. Utilise /metiers pour en trouver un.");
+      return;
+    }
+
+    const time = await worldManager.getCurrentTime();
+    const workCheck = await worldManager.shouldBeAtWork(player, time.hour);
+
+    if (!workCheck.shouldBe) {
+      await this.sendMessage(chatId, "⏰ Ce n'est pas l'heure de travail.\n📅 Horaires: 8h-13h (matin) ou 19h+ (soir)");
+      return;
+    }
+
+    player.job.atWork = true;
+    player.job.lastWorkCheck = Date.now();
+    await database.savePlayer(player.phoneNumber, player);
+
+    await this.sendMessage(chatId, `✅ ${player.customName || player.name} arrive au travail.\n💼 ${player.job.current}\n⏰ ${workCheck.workPeriod}\n\nTravaille bien ! Tape /finir quand tu as terminé.`);
+  }
+
+  async finishWork(chatId, player) {
+    if (!player.job.atWork) {
+      await this.sendMessage(chatId, "❌ Tu n'es pas au travail.");
+      return;
+    }
+
+    const hoursWorked = Math.min(5, Math.floor((Date.now() - player.job.lastWorkCheck) / 60000));
+    const result = playerManager.addWorkHours(player, hoursWorked);
+    result.player.job.atWork = false;
+    
+    await database.savePlayer(player.phoneNumber, result.player);
+
+    await this.sendMessage(chatId, `✅ Travail terminé !\n⏱️ Heures: ${hoursWorked}h\n💰 Salaire: +${result.earnings}$\n\nBon repos !`);
+  }
 
     if (!canApply.can) {
       await this.sendMessage(chatId, `❌ ${canApply.reason}`);

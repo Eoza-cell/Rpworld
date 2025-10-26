@@ -23,6 +23,11 @@ class WorldManager {
 
   async updateTime() {
     const world = await database.getWorld();
+    
+    if (!world.time.startTime) {
+      world.time.startTime = Date.now();
+    }
+    
     const elapsed = Date.now() - world.time.startTime;
     const hoursElapsed = Math.floor(elapsed / (3600000 / this.TIME_RATIO));
 
@@ -34,6 +39,21 @@ class WorldManager {
     }
 
     await database.saveWorld(world);
+  }
+
+  isWorkHours(hour) {
+    return (hour >= 8 && hour <= 13) || hour >= 19;
+  }
+
+  shouldBeAtWork(player, currentHour) {
+    if (!player.job.current) return { shouldBe: false };
+    
+    const isWorkTime = this.isWorkHours(currentHour);
+    return {
+      shouldBe: isWorkTime,
+      currentHour,
+      workPeriod: currentHour >= 8 && currentHour <= 13 ? 'matin' : 'soir'
+    };
   }
 
   async getCurrentTime() {

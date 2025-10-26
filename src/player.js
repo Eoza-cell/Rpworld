@@ -5,6 +5,10 @@ class PlayerManager {
     return {
       phoneNumber,
       name,
+      customName: null,
+      age: null,
+      background: null,
+      characterCreated: false,
       stats: {
         health: 100,
         energy: 100,
@@ -27,7 +31,9 @@ class PlayerManager {
         current: null,
         experience: {},
         salary: 0,
-        workHours: 0
+        workHours: 0,
+        atWork: false,
+        lastWorkCheck: null
       },
       licenses: {
         driving: false,
@@ -46,6 +52,34 @@ class PlayerManager {
       createdAt: Date.now(),
       lastActive: Date.now()
     };
+  }
+
+  async createCharacter(player, name, age, background) {
+    player.customName = name;
+    player.age = age;
+    player.background = background;
+    player.characterCreated = true;
+    
+    // Bonus selon le background
+    const backgroundBonuses = {
+      'athletique': { stats: { health: 10, energy: 10 }, skills: { combat: 10 } },
+      'intellectuel': { stats: { mental: 15 }, skills: { negotiation: 15 } },
+      'streetwise': { stats: { wanted: -10 }, skills: { stealth: 15 } },
+      'riche': { inventory: { money: 2000, bankAccount: 5000 } },
+      'mecano': { skills: { repair: 20, driving: 10 } }
+    };
+    
+    const bonus = backgroundBonuses[background];
+    if (bonus) {
+      if (bonus.stats) Object.assign(player.stats, { ...player.stats, ...bonus.stats });
+      if (bonus.skills) Object.assign(player.skills, { ...player.skills, ...bonus.skills });
+      if (bonus.inventory) {
+        player.inventory.money += bonus.inventory.money || 0;
+        player.inventory.bankAccount += bonus.inventory.bankAccount || 0;
+      }
+    }
+    
+    return player;
   }
 
   async getOrCreatePlayer(phoneNumber, name) {
