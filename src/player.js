@@ -273,5 +273,3 @@ class PlayerManager {
 }
 
 export default new PlayerManager();
-
-export default new PlayerManager();
