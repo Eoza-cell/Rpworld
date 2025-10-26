@@ -151,6 +151,38 @@ class NPCManager {
     return reactions;
   }
 
+  async getBossForJob(jobName) {
+    const bosses = {
+      'Livreur': 'npc_boss_delivery',
+      'Serveur': 'npc_boss_resto',
+      'Mécanicien': 'npc_boss_garage',
+      'Chauffeur Taxi': 'npc_boss_taxi',
+      'Cuisinier': 'npc_boss_chef',
+      'Vendeur': 'npc_boss_shop',
+      'Gardien de Sécurité': 'npc_boss_security',
+      'Dealer (Illégal)': 'npc_boss_gang',
+      'Braqueur (Illégal)': 'npc_boss_crime'
+    };
+    
+    return bosses[jobName] || 'Le Manager';
+  }
+
+  async checkWorkAttendance(player, currentHour) {
+    if (!player.job.current) return null;
+    
+    const shouldWork = (currentHour >= 8 && currentHour <= 13) || currentHour >= 19;
+    
+    if (shouldWork && !player.job.atWork) {
+      return {
+        warning: true,
+        boss: await this.getBossForJob(player.job.current),
+        period: currentHour >= 8 && currentHour <= 13 ? 'matin (8h-13h)' : 'soir (19h+)'
+      };
+    }
+    
+    return null;
+  }
+
   getNPCsDescription(npcs) {
     if (npcs.length === 0) return "La zone est déserte.";
     
