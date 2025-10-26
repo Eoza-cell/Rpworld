@@ -81,6 +81,7 @@ class EspritMondeBot {
               console.log('━'.repeat(50));
               console.log('⏳ En attente de la connexion...\n');
 
+              webServer.updatePairingCode(formattedCode);
               webServer.updateStatus(`🔑 Code de jumelage: ${formattedCode}`, false);
             } catch (error) {
               console.error('❌ Erreur lors de la génération du code de jumelage:', error);

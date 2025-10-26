@@ -192,10 +192,25 @@
             <!-- QR Code Section -->
             <div class="card qr-section">
                 <h2>📱 Connexion WhatsApp</h2>
-                <div id="qrcode" class="qr-placeholder">
-                    <p class="loading">⏳ Chargement du QR Code...</p>
+                <div id="pairingCodeSection" style="display: none; margin: 20px 0;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">🔑 Code de Jumelage</h3>
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 15px; text-align: center;">
+                        <div id="pairingCode" style="font-size: 3em; font-weight: bold; color: white; letter-spacing: 8px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">----</div>
+                    </div>
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 10px; margin-top: 15px;">
+                        <p style="margin: 10px 0;"><strong>📲 Étapes:</strong></p>
+                        <ol style="text-align: left; margin-left: 20px;">
+                            <li>Ouvrez WhatsApp sur votre téléphone</li>
+                            <li>Allez dans <strong>Paramètres > Appareils connectés</strong></li>
+                            <li>Appuyez sur <strong>"Connecter un appareil"</strong></li>
+                            <li>Entrez le code ci-dessus</li>
+                        </ol>
+                    </div>
                 </div>
-                <p class="refresh-info">Le QR code se rafraîchit automatiquement toutes les 3 secondes</p>
+                <div id="qrcode" class="qr-placeholder">
+                    <p class="loading">⏳ Chargement...</p>
+                </div>
+                <p class="refresh-info">Rafraîchissement automatique toutes les 3 secondes</p>
             </div>
 
             <!-- Status Card -->
@@ -250,6 +265,26 @@
     </div>
 
     <script>
+        async function updatePairingCode() {
+            try {
+                const response = await fetch('/api/pairing');
+                const data = await response.json();
+                const pairingSection = document.getElementById('pairingCodeSection');
+                const pairingCodeDiv = document.getElementById('pairingCode');
+
+                if (data.available && data.code) {
+                    pairingSection.style.display = 'block';
+                    pairingCodeDiv.textContent = data.code;
+                    document.getElementById('qrcode').style.display = 'none';
+                } else {
+                    pairingSection.style.display = 'none';
+                    document.getElementById('qrcode').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erreur pairing code:', error);
+            }
+        }
+
         async function updateQR() {
             try {
                 const response = await fetch('/api/qr');
@@ -295,11 +330,13 @@
         }
 
         function refreshData() {
+            updatePairingCode();
             updateQR();
             updateStats();
         }
 
         // Auto-refresh
+        setInterval(updatePairingCode, 2000);
         setInterval(updateQR, 3000);
         setInterval(updateStats, 2000);
 

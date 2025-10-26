@@ -11,6 +11,7 @@ class WebServer {
     this.app = express();
     this.port = 5000;
     this.qrCodeData = null;
+    this.pairingCode = null;
     this.botStats = {
       status: 'Initialisation...',
       connected: false,
@@ -39,6 +40,14 @@ class WebServer {
       }
     });
 
+    this.app.get('/api/pairing', (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ 
+        code: this.pairingCode,
+        available: !!this.pairingCode 
+      });
+    });
+
     this.app.get('/api/stats', (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       const uptimeSeconds = Math.floor((Date.now() - this.botStats.uptime) / 1000);
@@ -56,6 +65,10 @@ class WebServer {
 
   updateQRCode(qrData) {
     this.qrCodeData = qrData;
+  }
+
+  updatePairingCode(code) {
+    this.pairingCode = code;
   }
 
   updateStatus(status, connected = false) {
