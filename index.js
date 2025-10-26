@@ -45,6 +45,9 @@ class EspritMondeBot {
     try {
       const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
 
+      const connectionMethod = process.env.CONNECTION_METHOD || 'pairing';
+      const phoneNumber = process.env.PHONE_NUMBER;
+
       this.sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
@@ -62,12 +65,41 @@ class EspritMondeBot {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-          console.log('\n📱 Scannez ce QR Code avec WhatsApp:\n');
-          qrcode.generate(qr, { small: true });
-          console.log('\n⏳ En attente du scan...\n');
+          if (connectionMethod === 'pairing' && phoneNumber && !this.sock.authState.creds.registered) {
+            try {
+              const code = await this.sock.requestPairingCode(phoneNumber);
+              const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
+              
+              console.log('\n🔑 CODE DE JUMELAGE WHATSAPP');
+              console.log('━'.repeat(50));
+              console.log(`📱 Code: ${formattedCode}`);
+              console.log('📲 Étapes:');
+              console.log('   1. Ouvrez WhatsApp sur votre téléphone');
+              console.log('   2. Allez dans Paramètres > Appareils connectés');
+              console.log('   3. Appuyez sur "Connecter un appareil"');
+              console.log('   4. Entrez ce code: ' + formattedCode);
+              console.log('━'.repeat(50));
+              console.log('⏳ En attente de la connexion...\n');
 
-          webServer.updateQRCode(qr);
-          webServer.updateStatus('⏳ En attente du scan QR Code', false);
+              webServer.updateStatus(`🔑 Code de jumelage: ${formattedCode}`, false);
+            } catch (error) {
+              console.error('❌ Erreur lors de la génération du code de jumelage:', error);
+              console.log('🔄 Basculement vers le mode QR Code...');
+              console.log('\n📱 Scannez ce QR Code avec WhatsApp:\n');
+              qrcode.generate(qr, { small: true });
+              console.log('\n⏳ En attente du scan...\n');
+
+              webServer.updateQRCode(qr);
+              webServer.updateStatus('⏳ En attente du scan QR Code', false);
+            }
+          } else if (connectionMethod === 'qr' || !phoneNumber) {
+            console.log('\n📱 Scannez ce QR Code avec WhatsApp:\n');
+            qrcode.generate(qr, { small: true });
+            console.log('\n⏳ En attente du scan...\n');
+
+            webServer.updateQRCode(qr);
+            webServer.updateStatus('⏳ En attente du scan QR Code', false);
+          }
         }
 
         if (connection === 'close') {
