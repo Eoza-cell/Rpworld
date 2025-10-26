@@ -730,11 +730,13 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
   }
 
   async handleCharacterCreation(chatId, player, text, isGroup = false) {
+    const phoneNumber = player.phoneNumber; // Garder le bon phoneNumber
+    
     switch (player.creationStep) {
       case 'name':
         player.customName = text.trim();
         player.creationStep = 'age';
-        await database.savePlayer(player.phoneNumber, player);
+        await database.savePlayer(phoneNumber, player);
         await this.sendMessage(chatId, `✅ Nom: ${player.customName}\n\n🎂 **Étape 2/3 : Âge**\nQuel âge a ${player.customName} ?\n\nTape un nombre entre 18 et 80.`);
         break;
 
@@ -746,7 +748,7 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
         }
         player.age = age;
         player.creationStep = 'gender';
-        await database.savePlayer(player.phoneNumber, player);
+        await database.savePlayer(phoneNumber, player);
         await this.sendMessage(chatId, `✅ Âge: ${age} ans\n\n⚧️ **Étape 3/4 : Genre**\nQuel est le genre de ${player.customName} ?\n\nTape: **homme** ou **femme**`);
         break;
 
@@ -758,7 +760,7 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
         }
         player.gender = gender === 'homme' ? 'male' : 'female';
         player.creationStep = 'background';
-        await database.savePlayer(player.phoneNumber, player);
+        await database.savePlayer(phoneNumber, player);
         await this.sendMessage(chatId, `✅ Genre: ${gender}\n\n🎭 **Étape 4/4 : Background**\nQuel est le passé de ${player.customName} ?\n\n1️⃣ **athletique** - +1 Santé/Énergie, +1 Combat\n2️⃣ **intellectuel** - +1 Mental, +1 Négociation\n3️⃣ **streetwise** - -1 Wanted, +1 Discrétion\n4️⃣ **riche** - +2000$ cash, +5000$ banque\n5️⃣ **mecano** - +20 Réparation, +10 Conduite\n\nTape le nom du background choisi.`);
         break;
 
@@ -773,7 +775,7 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
 
         await playerManager.createCharacter(player, player.customName, player.age, bg);
         delete player.creationStep;
-        await database.savePlayer(player.phoneNumber, player);
+        await database.savePlayer(phoneNumber, player);
 
         await this.sendMessage(chatId, `🎉 **PERSONNAGE CRÉÉ !**
 
