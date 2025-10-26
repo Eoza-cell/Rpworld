@@ -83,12 +83,12 @@ class WorldManager {
   }
 
   calculateDistance(loc1, loc2) {
-    const locations = ['quartier_beton', 'centre_ville', 'marche', 'quartier_riche', 'zone_industrielle', 'aeroport', 'paris', 'tokyo', 'new_york'];
+    const locations = ['paris', 'londres', 'amsterdam', 'berlin', 'montreal', 'new_york', 'los_angeles', 'tokyo', 'seoul', 'bangkok', 'dubai', 'istanbul', 'moscou', 'sydney', 'rio'];
     const idx1 = locations.indexOf(loc1);
     const idx2 = locations.indexOf(loc2);
 
     if (idx1 === -1 || idx2 === -1) return 0;
-    return Math.abs(idx1 - idx2) * 200;
+    return Math.abs(idx1 - idx2) * 500;
   }
 }
 

@@ -46,16 +46,29 @@ class ActionDetector {
 
   extractLocation(text) {
     const locations = {
-      'quartier béton': 'quartier_beton',
-      'beton': 'quartier_beton',
-      'quartier riche': 'quartier_riche',
-      'riche': 'quartier_riche',
-      'zone industrielle': 'zone_industrielle',
-      'industrielle': 'zone_industrielle',
-      'centre': 'centre_ville',
-      'centre-ville': 'centre_ville',
-      'marché': 'marche',
-      'marche': 'marche'
+      'paris': 'paris',
+      'tokyo': 'tokyo',
+      'new york': 'new_york',
+      'new-york': 'new_york',
+      'newyork': 'new_york',
+      'dubai': 'dubai',
+      'dubaï': 'dubai',
+      'londres': 'londres',
+      'london': 'londres',
+      'rio': 'rio',
+      'sydney': 'sydney',
+      'istanbul': 'istanbul',
+      'moscou': 'moscou',
+      'moscow': 'moscou',
+      'bangkok': 'bangkok',
+      'los angeles': 'los_angeles',
+      'la': 'los_angeles',
+      'berlin': 'berlin',
+      'montreal': 'montreal',
+      'montréal': 'montreal',
+      'amsterdam': 'amsterdam',
+      'seoul': 'seoul',
+      'séoul': 'seoul'
     };
 
     const lowerText = text.toLowerCase();

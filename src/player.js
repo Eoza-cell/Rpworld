@@ -13,7 +13,7 @@ class PlayerManager {
         wanted: 0
       },
       position: {
-        location: "quartier_beton",
+        location: "paris",
         x: 0,
         y: 0
       },
