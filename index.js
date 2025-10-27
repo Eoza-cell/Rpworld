@@ -730,20 +730,20 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
   }
 
   async handleCharacterCreation(chatId, player, text, isGroup = false) {
-    const phoneNumber = player.phoneNumber; // Garder le bon phoneNumber
+    const phoneNumber = player.phoneNumber;
     
     switch (player.creationStep) {
       case 'name':
         player.customName = text.trim();
         player.creationStep = 'age';
         await database.savePlayer(phoneNumber, player);
-        await this.sendMessage(chatId, `✅ Nom: ${player.customName}\n\n🎂 **Étape 2/3 : Âge**\nQuel âge a ${player.customName} ?\n\nTape un nombre entre 18 et 80.`);
+        await this.sendMessage(chatId, `✅ Nom: ${player.customName}\n\n🎂 **Étape 2/4 : Âge**\nQuel âge a ${player.customName} ?\n\nTape un nombre entre 18 et 80.`);
         break;
 
       case 'age':
-        const age = parseInt(text);
+        const age = parseInt(text.trim());
         if (isNaN(age) || age < 18 || age > 80) {
-          await this.sendMessage(chatId, "❌ Âge invalide. Entre 18 et 80 ans.");
+          await this.sendMessage(chatId, `❌ Âge invalide. Entre 18 et 80 ans.\n\nTape un nombre comme: 25`);
           return;
         }
         player.age = age;
@@ -761,7 +761,7 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
         player.gender = gender === 'homme' ? 'male' : 'female';
         player.creationStep = 'background';
         await database.savePlayer(phoneNumber, player);
-        await this.sendMessage(chatId, `✅ Genre: ${gender}\n\n🎭 **Étape 4/4 : Background**\nQuel est le passé de ${player.customName} ?\n\n1️⃣ **athletique** - +1 Santé/Énergie, +1 Combat\n2️⃣ **intellectuel** - +1 Mental, +1 Négociation\n3️⃣ **streetwise** - -1 Wanted, +1 Discrétion\n4️⃣ **riche** - +2000$ cash, +5000$ banque\n5️⃣ **mecano** - +20 Réparation, +10 Conduite\n\nTape le nom du background choisi.`);
+        await this.sendMessage(chatId, `✅ Genre: ${gender}\n\n🎭 **Étape 4/4 : Background**\nQuel est le passé de ${player.customName} ?\n\n1️⃣ **athletique** - +10 Santé/Énergie, +10 Combat\n2️⃣ **intellectuel** - +15 Mental, +15 Négociation\n3️⃣ **streetwise** - -10 Wanted, +15 Discrétion\n4️⃣ **riche** - +2000$ cash, +5000$ banque\n5️⃣ **mecano** - +20 Réparation, +10 Conduite\n\nTape le nom du background choisi.`);
         break;
 
       case 'background':
@@ -774,12 +774,13 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
         }
 
         await playerManager.createCharacter(player, player.customName, player.age, bg);
+        player.characterCreated = true;
         delete player.creationStep;
         await database.savePlayer(phoneNumber, player);
 
         await this.sendMessage(chatId, `🎉 **PERSONNAGE CRÉÉ !**
 
-👤 ${player.customName}, ${player.age} ans
+👤 ${player.customName}, ${player.age} ans (${player.gender === 'male' ? 'Homme' : 'Femme'})
 🎭 Background: ${bg}
 
 ${playerManager.getStatsDisplay(player)}
