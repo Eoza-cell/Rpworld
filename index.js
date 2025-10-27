@@ -731,17 +731,21 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
 
   async handleCharacterCreation(chatId, player, text, isGroup = false) {
     const phoneNumber = player.phoneNumber;
+    let processedText = text.trim();
+    if (isGroup && processedText.startsWith('/')) {
+      processedText = processedText.substring(1);
+    }
     
     switch (player.creationStep) {
       case 'name':
-        player.customName = text.trim();
+        player.customName = processedText;
         player.creationStep = 'age';
         await database.savePlayer(phoneNumber, player);
         await this.sendMessage(chatId, `✅ Nom: ${player.customName}\n\n🎂 **Étape 2/4 : Âge**\nQuel âge a ${player.customName} ?\n\nTape un nombre entre 18 et 80.`);
         break;
 
       case 'age':
-        const age = parseInt(text.trim());
+        const age = parseInt(processedText);
         if (isNaN(age) || age < 18 || age > 80) {
           await this.sendMessage(chatId, `❌ Âge invalide. Entre 18 et 80 ans.\n\nTape un nombre comme: 25`);
           return;
@@ -753,7 +757,7 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
         break;
 
       case 'gender':
-        const gender = text.toLowerCase().trim();
+        const gender = processedText.toLowerCase();
         if (gender !== 'homme' && gender !== 'femme') {
           await this.sendMessage(chatId, "❌ Genre invalide. Tape 'homme' ou 'femme'.");
           return;
@@ -766,7 +770,7 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
 
       case 'background':
         const validBackgrounds = ['athletique', 'intellectuel', 'streetwise', 'riche', 'mecano'];
-        const bg = text.toLowerCase().trim();
+        const bg = processedText.toLowerCase();
 
         if (!validBackgrounds.includes(bg)) {
           await this.sendMessage(chatId, "❌ Background invalide. Choisis parmi: athletique, intellectuel, streetwise, riche, mecano");
