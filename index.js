@@ -68,7 +68,7 @@ class EspritMondeBot {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-          if (connectionMethod === 'pairing' && phoneNumber && !this.sock.authState.creds.registered) {
+          if (connectionMethod === 'pairing' && phoneNumber) {
             try {
               const code = await this.sock.requestPairingCode(phoneNumber);
               const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
