@@ -3,58 +3,36 @@ import pollinations from './pollinations.js';
 class ActionDetector {
   constructor() {
     this.actionPatterns = {
-      deplacement: {
-        keywords: ['aller', 'marcher', 'courir', 'partir', 'avancer', 'traverser', 'sortir', 'voyager', 'se rendre'],
-        target: 'location'
-      },
-      vol: {
-        keywords: ['voler', 'braquer', 'arracher', 'piquer', 'dérober', 'cambrioler', 'détrousser'],
-        target: 'personne'
-      },
-      combat: {
-        keywords: ['frapper', 'attaquer', 'combattre', 'taper', 'cogner', 'blesser', 'menacer', 'provoquer'],
-        target: 'personne'
-      },
-      interaction: {
-        keywords: ['parler', 'discuter', 'saluer', 'demander', 'rencontrer', 'voir', 'interroger', 'draguer'],
-        target: 'personne'
-      },
-      commerce: {
-        keywords: ['acheter', 'vendre', 'payer', 'négocier', 'échanger', 'commander', 'louer'],
-        target: 'boutique'
-      },
-      repos: {
-        keywords: ['dormir', 'manger', 'boire', 'repos', 'se reposer', 'asseoir', 's\'allonger'],
-        target: 'lieu'
-      }
+      deplacement: ['aller', 'marcher', 'courir', 'partir', 'avancer', 'traverser', 'sortir'],
+      vol: ['voler', 'braquer', 'arracher', 'piquer', 'dérober', 'cambrioler'],
+      combat: ['frapper', 'attaquer', 'combattre', 'taper', 'cogner', 'blesser'],
+      interaction: ['parler', 'discuter', 'saluer', 'demander', 'rencontrer', 'voir'],
+      commerce: ['acheter', 'vendre', 'payer', 'négocier', 'échanger'],
+      repos: ['dormir', 'manger', 'boire', 'repos', 'se reposer', 'asseoir']
     };
   }
 
   async analyzeAction(actionText, playerContext) {
     const quickAnalysis = this.quickAnalyze(actionText);
+
     const aiAnalysis = await pollinations.analyzeAction(actionText, playerContext);
 
-    const combinedAnalysis = {
-      ...aiAnalysis, // AI analysis provides the base
-      ...quickAnalysis, // Quick analysis provides more specific keywords and types
-      target: this.extractTarget(actionText, quickAnalysis.detectedType) || aiAnalysis.target,
-      risk: this.getRiskLevel(quickAnalysis.detectedType, playerContext.location),
+    return {
+      ...quickAnalysis,
+      ...aiAnalysis,
       originalText: actionText
     };
-
-    return combinedAnalysis;
   }
 
   quickAnalyze(text) {
     const lowerText = text.toLowerCase();
     
-    for (const [type, data] of Object.entries(this.actionPatterns)) {
-      for (const keyword of data.keywords) {
+    for (const [type, keywords] of Object.entries(this.actionPatterns)) {
+      for (const keyword of keywords) {
         if (lowerText.includes(keyword)) {
           return {
             detectedType: type,
-            keyword,
-            targetType: data.target
+            keyword
           };
         }
       }
@@ -62,8 +40,7 @@ class ActionDetector {
     
     return {
       detectedType: 'action_libre',
-      keyword: null,
-      targetType: 'none'
+      keyword: null
     };
   }
 
@@ -103,29 +80,15 @@ class ActionDetector {
     return null;
   }
 
-  extractTarget(text, actionType) {
+  extractTarget(text) {
+    const targets = ['boutique', 'magasin', 'bar', 'café', 'restaurant', 'banque', 'bijouterie', 'personne', 'PNJ', 'homme', 'femme'];
     const lowerText = text.toLowerCase();
-    let potentialTargets = [];
 
-    if (actionType === 'commerce') {
-      potentialTargets = ['boutique', 'magasin', 'supermarché', 'bar', 'café', 'restaurant'];
-    } else if (['vol', 'combat', 'interaction'].includes(actionType)) {
-      potentialTargets = ['personne', 'pnj', 'homme', 'femme', 'garde', 'policier', 'vendeur'];
-    } else if (actionType === 'deplacement') {
-      return this.extractLocation(text);
-    }
-
-    for (const target of potentialTargets) {
+    for (const target of targets) {
       if (lowerText.includes(target)) {
         return target;
       }
     }
-
-    // Extraction de nom propre (simple)
-    const words = text.split(' ');
-    const capitalizedWord = words.find(w => w.length > 2 && w[0] === w[0].toUpperCase() && w.slice(1) === w.slice(1).toLowerCase());
-    if (capitalizedWord) return capitalizedWord;
-
     return null;
   }
 

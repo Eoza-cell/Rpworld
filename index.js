@@ -12,14 +12,12 @@ import worldManager from './src/world.js';
 import actionDetector from './src/actionDetector.js';
 import consequences from './src/consequences.js';
 import npcManager from './src/npcs.js';
-import { generateImage } from './src/puter.js';
+import pollinations from './src/pollinations.js';
 import webServer from './src/webServer.js';
 import economy from './src/economy.js';
 import movementManager from './src/movement.js';
 import familyManager from './src/family.js';
 import mapGenerator from './src/mapGenerator.js';
-import shopManager from './src/shops.js';
-import bankManager from './src/banks.js';
 
 dotenv.config();
 
@@ -217,11 +215,6 @@ class EspritMondeBot {
       return;
     }
 
-    if (!playerManager.isAlive(player)) {
-      await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie.");
-      return;
-    }
-
     if (text.toLowerCase() === '/stats') {
       const stats = playerManager.getStatsDisplay(player);
       const location = await worldManager.getLocationDescription(player.position.location);
@@ -347,71 +340,8 @@ class EspritMondeBot {
       return;
     }
 
-    if (text.toLowerCase() === '/boutiques') {
-      const shops = shopManager.getShops(player.position.location);
-      if (shops.length === 0) {
-        await this.sendMessage(from, 'Il n\'y a pas de boutiques ici.');
-        return;
-      }
-      let message = '🏪 **Boutiques à proximité**\n\n';
-      shops.forEach((shop) => {
-        message += `**${shop.name}**\n`;
-        message += 'Articles:\n';
-        shop.inventory.forEach((item) => {
-          message += `- ${item.name} (${item.price}$)\n`;
-        });
-        message += `\nPour acheter, tapez /acheter ${shop.id} [id_article]\n\n`;
-      });
-      await this.sendMessage(from, message);
-      return;
-    }
-
-    if (text.toLowerCase().startsWith('/acheter ')) {
-      const args = text.split(' ').slice(1);
-      if (args.length !== 2) {
-        await this.sendMessage(from, 'Usage: /acheter [id_boutique] [id_article]');
-        return;
-      }
-      const [shopId, itemId] = args;
-      const result = shopManager.buyItem(player, shopId, itemId);
-      await this.sendMessage(from, result.message);
-      if (result.success) {
-        await database.savePlayer(player.phoneNumber, player);
-      }
-      return;
-    }
-
-    if (text.toLowerCase() === '/banques') {
-      const banks = bankManager.getBanks(player.position.location);
-      if (banks.length === 0) {
-        await this.sendMessage(from, 'Il n\'y a pas de banques ici.');
-        return;
-      }
-      let message = '🏦 **Banques à proximité**\n\n';
-      banks.forEach((bank) => {
-        message += `**${bank.name}**\n`;
-        message += `Services: ${bank.services.join(', ')}\n`;
-        if (bank.services.includes('loan')) {
-          message += `Prêt max: ${bank.loanConditions.maxAmount}$, Taux: ${bank.loanConditions.interestRate * 100}%, Score de crédit requis: ${bank.loanConditions.requiredCreditScore}\n`;
-        }
-        message += `\nPour un prêt, tapez /pret ${bank.id} [montant]\n\n`;
-      });
-      await this.sendMessage(from, message);
-      return;
-    }
-
-    if (text.toLowerCase().startsWith('/pret ')) {
-      const args = text.split(' ').slice(1);
-      if (args.length !== 2) {
-        await this.sendMessage(from, 'Usage: /pret [id_banque] [montant]');
-        return;
-      }
-      const [bankId, amount] = args;
-      const result = bankManager.applyForLoan(player, bankId, parseInt(amount));
-      await this.sendMessage(from, result.message);
-      if (result.success) {
-        await database.savePlayer(player.phoneNumber, player);
-      }
+    if (!playerManager.isAlive(player)) {
+      await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie.");
       return;
     }
 
@@ -501,10 +431,6 @@ class EspritMondeBot {
 
     const narrative = await pollinations.generateNarrative(narrativeContext);
 
-    // Ajout de la génération d'image
-    const imagePrompt = `${narrative}, realistic, cinematic, detailed`;
-    const imageUrl = await generateImage(imagePrompt);
-
     let response = `🎭 **ESPRIT-MONDE**\n\n${narrative}\n\n`;
 
     if (npcReactions.length > 0) {
@@ -517,15 +443,10 @@ class EspritMondeBot {
       response += `\n\n⚡ Événements: ${calculatedConsequences.events.join(', ')}`;
     }
 
-    // Envoi de l'image si elle a été générée
-    if (imageUrl) {
-      await this.sendMessage(from, { image: { url: imageUrl }, caption: response });
-    } else {
-      await this.sendMessage(from, { text: response });
-    }
+    await this.sendMessage(from, response);
 
     if (!playerManager.isAlive(player)) {
-      await this.sendMessage(from, { text: "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer." });
+      await this.sendMessage(from, "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer.");
     }
   }
 
@@ -784,14 +705,9 @@ ${await worldManager.getLocationDescription(player.position.location)}
     }
   }
 
-  async sendMessage(to, message) {
+  async sendMessage(to, text) {
     try {
-      if (typeof message === 'string') {
-        await this.sock.sendMessage(to, { text: message });
-      } else {
-        // Pour envoyer des images, vidéos, etc.
-        await this.sock.sendMessage(to, message);
-      }
+      await this.sock.sendMessage(to, { text });
     } catch (error) {
       console.error('Erreur envoi message:', error);
     }
