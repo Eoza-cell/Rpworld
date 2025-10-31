@@ -2,9 +2,11 @@ import express from 'express';
 import QRCode from 'qrcode';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { promises as fs } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const UPTIME_FILE = join(__dirname, '..', 'data', 'uptime.json');
 
 class WebServer {
   constructor() {
@@ -18,8 +20,27 @@ class WebServer {
       players: 0,
       npcs: 3,
       locations: 5,
-      uptime: Date.now()
+      uptime: 0
     };
+    this.loadUptime();
+  }
+
+  async loadUptime() {
+    try {
+      const data = await fs.readFile(UPTIME_FILE, 'utf8');
+      this.botStats.uptime = JSON.parse(data).startTime;
+    } catch (error) {
+      this.botStats.uptime = Date.now();
+      await this.saveUptime();
+    }
+  }
+
+  async saveUptime() {
+    try {
+      await fs.writeFile(UPTIME_FILE, JSON.stringify({ startTime: this.botStats.uptime }));
+    } catch (error) {
+      console.error('Erreur sauvegarde uptime:', error);
+    }
   }
 
   init() {

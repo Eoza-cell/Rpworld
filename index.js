@@ -12,12 +12,13 @@ import worldManager from './src/world.js';
 import actionDetector from './src/actionDetector.js';
 import consequences from './src/consequences.js';
 import npcManager from './src/npcs.js';
-import pollinations from './src/pollinations.js';
+import { generateImage } from './src/puter.js';
 import webServer from './src/webServer.js';
 import economy from './src/economy.js';
 import movementManager from './src/movement.js';
 import familyManager from './src/family.js';
 import mapGenerator from './src/mapGenerator.js';
+import shopManager from './src/shops.js';
 
 dotenv.config();
 
@@ -340,6 +341,40 @@ class EspritMondeBot {
       return;
     }
 
+    if (text.toLowerCase() === '/boutiques') {
+      const shops = shopManager.getShops(player.position.location);
+      if (shops.length === 0) {
+        await this.sendMessage(from, 'Il n\'y a pas de boutiques ici.');
+        return;
+      }
+      let message = '🏪 **Boutiques à proximité**\n\n';
+      shops.forEach((shop) => {
+        message += `**${shop.name}**\n`;
+        message += 'Articles:\n';
+        shop.inventory.forEach((item) => {
+          message += `- ${item.name} (${item.price}$)\n`;
+        });
+        message += `\nPour acheter, tapez /acheter ${shop.id} [id_article]\n\n`;
+      });
+      await this.sendMessage(from, message);
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/acheter ')) {
+      const args = text.split(' ').slice(1);
+      if (args.length !== 2) {
+        await this.sendMessage(from, 'Usage: /acheter [id_boutique] [id_article]');
+        return;
+      }
+      const [shopId, itemId] = args;
+      const result = shopManager.buyItem(player, shopId, itemId);
+      await this.sendMessage(from, result.message);
+      if (result.success) {
+        await database.savePlayer(player.phoneNumber, player);
+      }
+      return;
+    }
+
     if (!playerManager.isAlive(player)) {
       await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie.");
       return;
@@ -431,6 +466,10 @@ class EspritMondeBot {
 
     const narrative = await pollinations.generateNarrative(narrativeContext);
 
+    // Ajout de la génération d'image
+    const imagePrompt = `${narrative}, realistic, cinematic, detailed`;
+    const imageUrl = await generateImage(imagePrompt);
+
     let response = `🎭 **ESPRIT-MONDE**\n\n${narrative}\n\n`;
 
     if (npcReactions.length > 0) {
@@ -443,10 +482,15 @@ class EspritMondeBot {
       response += `\n\n⚡ Événements: ${calculatedConsequences.events.join(', ')}`;
     }
 
-    await this.sendMessage(from, response);
+    // Envoi de l'image si elle a été générée
+    if (imageUrl) {
+      await this.sendMessage(from, { image: { url: imageUrl }, caption: response });
+    } else {
+      await this.sendMessage(from, { text: response });
+    }
 
     if (!playerManager.isAlive(player)) {
-      await this.sendMessage(from, "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer.");
+      await this.sendMessage(from, { text: "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer." });
     }
   }
 
@@ -705,9 +749,14 @@ ${await worldManager.getLocationDescription(player.position.location)}
     }
   }
 
-  async sendMessage(to, text) {
+  async sendMessage(to, message) {
     try {
-      await this.sock.sendMessage(to, { text });
+      if (typeof message === 'string') {
+        await this.sock.sendMessage(to, { text: message });
+      } else {
+        // Pour envoyer des images, vidéos, etc.
+        await this.sock.sendMessage(to, message);
+      }
     } catch (error) {
       console.error('Erreur envoi message:', error);
     }

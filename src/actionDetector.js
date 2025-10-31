@@ -3,36 +3,51 @@ import pollinations from './pollinations.js';
 class ActionDetector {
   constructor() {
     this.actionPatterns = {
-      deplacement: ['aller', 'marcher', 'courir', 'partir', 'avancer', 'traverser', 'sortir'],
-      vol: ['voler', 'braquer', 'arracher', 'piquer', 'dérober', 'cambrioler'],
-      combat: ['frapper', 'attaquer', 'combattre', 'taper', 'cogner', 'blesser'],
-      interaction: ['parler', 'discuter', 'saluer', 'demander', 'rencontrer', 'voir'],
-      commerce: ['acheter', 'vendre', 'payer', 'négocier', 'échanger'],
-      repos: ['dormir', 'manger', 'boire', 'repos', 'se reposer', 'asseoir']
+      deplacement: {
+        keywords: ['aller', 'marcher', 'courir', 'partir', 'avancer', 'traverser', 'sortir', 'voyager', 'se rendre'],
+        target: 'location'
+      },
+      vol: {
+        keywords: ['voler', 'braquer', 'arracher', 'piquer', 'dérober', 'cambrioler', 'détrousser'],
+        target: 'personne'
+      },
+      combat: {
+        keywords: ['frapper', 'attaquer', 'combattre', 'taper', 'cogner', 'blesser', 'menacer', 'provoquer'],
+        target: 'personne'
+      },
+      interaction: {
+        keywords: ['parler', 'discuter', 'saluer', 'demander', 'rencontrer', 'voir', 'interroger', 'draguer'],
+        target: 'personne'
+      },
+      commerce: {
+        keywords: ['acheter', 'vendre', 'payer', 'négocier', 'échanger', 'commander', 'louer'],
+        target: 'boutique'
+      },
+      repos: {
+        keywords: ['dormir', 'manger', 'boire', 'repos', 'se reposer', 'asseoir', 's\'allonger'],
+        target: 'lieu'
+      }
     };
   }
 
   async analyzeAction(actionText, playerContext) {
-    const quickAnalysis = this.quickAnalyze(actionText);
-    
-    const aiAnalysis = await pollinations.analyzeAction(actionText, playerContext);
-    
-    return {
-      ...quickAnalysis,
-      ...aiAnalysis,
-      originalText: actionText
-    };
+    const analysis = this.quickAnalyze(actionText);
+    analysis.target = this.extractTarget(actionText, analysis.detectedType);
+    analysis.risk = this.getRiskLevel(analysis.detectedType, playerContext.location);
+    analysis.originalText = actionText;
+    return analysis;
   }
 
   quickAnalyze(text) {
     const lowerText = text.toLowerCase();
     
-    for (const [type, keywords] of Object.entries(this.actionPatterns)) {
-      for (const keyword of keywords) {
+    for (const [type, data] of Object.entries(this.actionPatterns)) {
+      for (const keyword of data.keywords) {
         if (lowerText.includes(keyword)) {
           return {
             detectedType: type,
-            keyword
+            keyword,
+            targetType: data.target
           };
         }
       }
@@ -40,7 +55,8 @@ class ActionDetector {
     
     return {
       detectedType: 'action_libre',
-      keyword: null
+      keyword: null,
+      targetType: 'none'
     };
   }
 
@@ -80,15 +96,29 @@ class ActionDetector {
     return null;
   }
 
-  extractTarget(text) {
-    const targets = ['boutique', 'magasin', 'bar', 'café', 'restaurant', 'banque', 'bijouterie', 'personne', 'PNJ', 'homme', 'femme'];
+  extractTarget(text, actionType) {
     const lowerText = text.toLowerCase();
-    
-    for (const target of targets) {
+    let potentialTargets = [];
+
+    if (actionType === 'commerce') {
+      potentialTargets = ['boutique', 'magasin', 'supermarché', 'bar', 'café', 'restaurant'];
+    } else if (['vol', 'combat', 'interaction'].includes(actionType)) {
+      potentialTargets = ['personne', 'pnj', 'homme', 'femme', 'garde', 'policier', 'vendeur'];
+    } else if (actionType === 'deplacement') {
+      return this.extractLocation(text);
+    }
+
+    for (const target of potentialTargets) {
       if (lowerText.includes(target)) {
         return target;
       }
     }
+
+    // Extraction de nom propre (simple)
+    const words = text.split(' ');
+    const capitalizedWord = words.find(w => w.length > 2 && w[0] === w[0].toUpperCase() && w.slice(1) === w.slice(1).toLowerCase());
+    if (capitalizedWord) return capitalizedWord;
+
     return null;
   }
 
