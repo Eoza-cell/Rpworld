@@ -15,7 +15,8 @@ class PlayerManager {
         energy: 100,
         hunger: 100,
         mental: 100,
-        wanted: 0
+        wanted: 0,
+        creditScore: 500
       },
       family: {
         pregnant: false,

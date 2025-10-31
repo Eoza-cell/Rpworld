@@ -31,11 +31,18 @@ class ActionDetector {
   }
 
   async analyzeAction(actionText, playerContext) {
-    const analysis = this.quickAnalyze(actionText);
-    analysis.target = this.extractTarget(actionText, analysis.detectedType);
-    analysis.risk = this.getRiskLevel(analysis.detectedType, playerContext.location);
-    analysis.originalText = actionText;
-    return analysis;
+    const quickAnalysis = this.quickAnalyze(actionText);
+    const aiAnalysis = await pollinations.analyzeAction(actionText, playerContext);
+
+    const combinedAnalysis = {
+      ...aiAnalysis, // AI analysis provides the base
+      ...quickAnalysis, // Quick analysis provides more specific keywords and types
+      target: this.extractTarget(actionText, quickAnalysis.detectedType) || aiAnalysis.target,
+      risk: this.getRiskLevel(quickAnalysis.detectedType, playerContext.location),
+      originalText: actionText
+    };
+
+    return combinedAnalysis;
   }
 
   quickAnalyze(text) {

@@ -1,9 +1,9 @@
-import { init } from '@heyputer/puter.js/src/init.cjs';
+import puter from '@heyputer/puter.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const puter = init(process.env.PUTER_AUTH_TOKEN);
+puter.init({ authToken: process.env.PUTER_AUTH_TOKEN });
 
 export const generateImage = async (prompt) => {
   try {

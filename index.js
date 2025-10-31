@@ -19,6 +19,7 @@ import movementManager from './src/movement.js';
 import familyManager from './src/family.js';
 import mapGenerator from './src/mapGenerator.js';
 import shopManager from './src/shops.js';
+import bankManager from './src/banks.js';
 
 dotenv.config();
 
@@ -69,7 +70,7 @@ class EspritMondeBot {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-          if (connectionMethod === 'pairing' && phoneNumber) {
+          if (connectionMethod === 'pairing' && phoneNumber && !this.sock.authState.creds.registered) {
             try {
               const code = await this.sock.requestPairingCode(phoneNumber);
               const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
@@ -213,6 +214,11 @@ class EspritMondeBot {
 
     if (!player.characterCreated) {
       await this.sendMessage(from, "⚠️ Tu dois d'abord créer ton personnage avec /start");
+      return;
+    }
+
+    if (!playerManager.isAlive(player)) {
+      await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie.");
       return;
     }
 
@@ -375,8 +381,37 @@ class EspritMondeBot {
       return;
     }
 
-    if (!playerManager.isAlive(player)) {
-      await this.sendMessage(from, "💀 Tu es mort. Tape /start pour recommencer une nouvelle vie.");
+    if (text.toLowerCase() === '/banques') {
+      const banks = bankManager.getBanks(player.position.location);
+      if (banks.length === 0) {
+        await this.sendMessage(from, 'Il n\'y a pas de banques ici.');
+        return;
+      }
+      let message = '🏦 **Banques à proximité**\n\n';
+      banks.forEach((bank) => {
+        message += `**${bank.name}**\n`;
+        message += `Services: ${bank.services.join(', ')}\n`;
+        if (bank.services.includes('loan')) {
+          message += `Prêt max: ${bank.loanConditions.maxAmount}$, Taux: ${bank.loanConditions.interestRate * 100}%, Score de crédit requis: ${bank.loanConditions.requiredCreditScore}\n`;
+        }
+        message += `\nPour un prêt, tapez /pret ${bank.id} [montant]\n\n`;
+      });
+      await this.sendMessage(from, message);
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/pret ')) {
+      const args = text.split(' ').slice(1);
+      if (args.length !== 2) {
+        await this.sendMessage(from, 'Usage: /pret [id_banque] [montant]');
+        return;
+      }
+      const [bankId, amount] = args;
+      const result = bankManager.applyForLoan(player, bankId, parseInt(amount));
+      await this.sendMessage(from, result.message);
+      if (result.success) {
+        await database.savePlayer(player.phoneNumber, player);
+      }
       return;
     }
 
