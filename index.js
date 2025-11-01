@@ -421,12 +421,16 @@ class EspritMondeBot {
 
     const narrativeContext = {
       action: actionText,
+      playerName: player.name,
       playerStats: player.stats,
       location: currentLocation?.name || player.position.location,
       time: `${time.hour}h, ${time.period}`,
       weather: time.weather,
       consequences: JSON.stringify(calculatedConsequences.statChanges),
-      npcsPresent: npcsPresent.map(n => n.name).join(', ')
+      npcsPresent: npcsPresent.map(n => n.name).join(', ') || 'personne',
+      history: player.history.slice(-1)[0]?.action || 'aucune action récente',
+      inventory: player.inventory.items.map(i => `${i.name} (x${i.quantity})`).join(', ') || 'rien',
+      money: `${player.inventory.money}$`
     };
 
     const narrative = await pollinations.generateNarrative(narrativeContext);
