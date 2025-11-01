@@ -12,7 +12,7 @@ import worldManager from './src/world.js';
 import actionDetector from './src/actionDetector.js';
 import consequences from './src/consequences.js';
 import npcManager from './src/npcs.js';
-import pollinations from './src/pollinations.js';
+import ai from './src/ai.js';
 import webServer from './src/webServer.js';
 import economy from './src/economy.js';
 import movementManager from './src/movement.js';
@@ -70,7 +70,7 @@ class EspritMondeBot {
       activePlayers: activePlayers.map(p => ({ name: p.name, location: p.position.location }))
     };
 
-    const decision = await pollinations.decideNextWorldEvent(context);
+    const decision = await ai.decideNextWorldEvent(context);
 
     if (decision.event === 'none') {
       console.log('Décision du MJ: Rien ne se passe.');
@@ -234,10 +234,6 @@ class EspritMondeBot {
 
       if (isGroup && !text.startsWith('/')) {
         await this.handleGameMasterConversation(from, text, participant, pushName);
-        continue;
-      }
-
-      if (isGroup && !text.startsWith('/')) {
         continue;
       }
 
@@ -507,8 +503,8 @@ class EspritMondeBot {
 
     // Génération de la narration et de l'image en parallèle
     const [narrative, imageUrl] = await Promise.all([
-      pollinations.generateNarrative(narrativeContext),
-      pollinations.generateImage(actionText) // Utiliser le texte de l'action brute pour l'image
+      ai.generateNarrative(narrativeContext),
+      ai.generateImage(actionText) // Utiliser le texte de l'action brute pour l'image
     ]);
 
     // Construction de la réponse textuelle
@@ -548,7 +544,7 @@ class EspritMondeBot {
       message: text,
     };
 
-    const response = await pollinations.generateConversationResponse(context);
+    const response = await ai.generateConversationResponse(context);
     await this.sendMessage(from, `🎭 **MJ ESPRIT-MONDE**\n\n${response}`);
   }
 
