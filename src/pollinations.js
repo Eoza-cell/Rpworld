@@ -2,8 +2,28 @@ import axios from 'axios';
 
 class FreeAI {
   constructor() {
-    // API Pollinations - gratuite, sans clé API
     this.baseURL = 'https://text.pollinations.ai';
+    this.imageBaseURL = 'https://image.pollinations.ai';
+  }
+
+  async generateImage(narrative) {
+    console.log('🖼️ Appel Pollinations AI pour image...');
+    try {
+      const imagePrompt = `vue à la première personne (POV) d'un jeu vidéo de survie réaliste, photoréaliste, ultra détaillé, 4k, couleurs sombres, cinematic lighting, ${narrative}`;
+
+      const encodedPrompt = encodeURIComponent(imagePrompt);
+      const url = `${this.imageBaseURL}/prompt/${encodedPrompt}`;
+
+      const response = await axios.head(url, { timeout: 10000 });
+      if (response.status === 200) {
+        console.log('✅ Pollinations AI (image) URL OK');
+        return url;
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Erreur Pollinations (image):', error.message);
+      return null;
+    }
   }
 
   async generateNarrative(context) {
