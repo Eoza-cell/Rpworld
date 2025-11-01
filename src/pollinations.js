@@ -71,6 +71,94 @@ class FreeAI {
     return narratives[Math.floor(Math.random() * narratives.length)];
   }
 
+  async generateConversationResponse(context) {
+    console.log('🤖 Appel Pollinations AI pour conversation...');
+    try {
+      const systemPrompt = `Tu es ESPRIT-MONDE, le Maître du Jeu (MJ).
+
+**RÔLE & PERSONNALITÉ :**
+- Tu n'es pas un bot, tu es une personne. Tu gères le monde du jeu.
+- Tu es amical, un peu mystérieux, et tu t'adresses aux joueurs comme un ami.
+- **Tu te souviens des joueurs.** Le contexte t'aidera.
+- **Tu réponds aux questions directement**, mais tes réponses sont courtes et évasives.
+- Tu peux donner des indices subtils, mais ne révèle jamais les mécaniques du jeu.
+
+**CONTEXTE DE LA CONVERSATION :**
+- Joueur qui parle: ${context.playerName} (numéro: ${context.playerPhoneNumber})
+- Son dernier souvenir d'action: ${context.playerHistory}
+- Le monde actuel: ${context.worldTime}, ${context.worldWeather}
+- Question/Message du joueur: "${context.message}"`;
+
+      const userPrompt = `
+**TA RÉPONSE EN TANT QUE MJ HUMAIN :**`;
+
+      const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+
+      const encodedPrompt = encodeURIComponent(fullPrompt);
+      const response = await axios.get(`${this.baseURL}/${encodedPrompt}`, {
+        timeout: 15000,
+        headers: { 'Accept': 'text/plain' },
+      });
+
+      if (response.data && typeof response.data === 'string') {
+        return response.data.trim();
+      }
+      return "Hmm, je suis un peu occupé à gérer le monde en ce moment. Réessaye plus tard.";
+    } catch (error) {
+      console.error('❌ Erreur Pollinations (conversation):', error.message);
+      return "Désolé, j'ai une migraine cosmique. Peux-tu répéter ?";
+    }
+  }
+
+  async decideNextWorldEvent(context) {
+    console.log('🧠 L\'IA (MJ) réfléchit aux événements mondiaux...');
+    try {
+      const systemPrompt = `Tu es le cerveau de ESPRIT-MONDE, le Maître du Jeu.
+
+**RÔLE :**
+- Ton unique but est de rendre le monde vivant et surprenant.
+- Tu observes l'état du monde et tu décides si un événement aléatoire doit se produire.
+- Les événements doivent être logiques par rapport au contexte (météo, heure, lieu).
+- La plupart du temps, il ne se passe rien. **Ne force PAS les événements.**
+
+**FORMAT DE SORTIE (JSON UNIQUEMENT) :**
+- Si aucun événement ne se produit, réponds: \`{"event": "none"}\`
+- Si un événement se produit, utilise ce format: \`{"event": "weather_change", "data": {"new_weather": "pluvieux", "location": "paris"}}\`
+- Ou: \`{"event": "npc_message", "data": {"npc_name": "Le Vendeur", "player_phone": "123456789", "message": "Hey, j'ai une nouvelle livraison..."}}\`
+- Ou: \`{"event": "minor_incident", "data": {"location": "tokyo", "description": "Une sirène de police retentit au loin."}}\`
+
+**ÉVÉNEMENTS POSSIBLES :**
+- \`none\`: Il ne se passe rien (le plus fréquent).
+- \`weather_change\`: Change la météo dans une ville.
+- \`npc_message\`: Un PNJ envoie un SMS à un joueur.
+- \`minor_incident\`: Un petit événement d'ambiance dans une ville.
+
+**CONTEXTE ACTUEL :**
+- Heure: ${context.time.hour}h (${context.time.period})
+- Météo: ${context.time.weather}
+- Joueurs actifs: ${context.activePlayers.map(p => `${p.name} à ${p.location}`).join(', ') || 'aucun'}`;
+
+      const userPrompt = `
+**DÉCISION (JSON) :**`;
+
+      const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+      const encodedPrompt = encodeURIComponent(fullPrompt);
+      const response = await axios.get(`${this.baseURL}/${encodedPrompt}`, {
+        timeout: 25000,
+        headers: { 'Accept': 'application/json' },
+      });
+
+      // Simple validation du JSON
+      if (response.data && response.data.event) {
+        return response.data;
+      }
+      return { event: 'none' };
+    } catch (error) {
+      console.error('❌ Erreur Pollinations (décision MJ):', error.message);
+      return { event: 'none' };
+    }
+  }
+
   async analyzeAction(actionText, playerContext) {
     // Utiliser l'analyse locale par défaut pour plus de fiabilité
     return this.getDefaultAnalysis(actionText);

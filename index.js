@@ -42,6 +42,62 @@ class EspritMondeBot {
     webServer.updateStatus('Connexion à WhatsApp...', false);
 
     await this.connectToWhatsApp();
+    this.startGameLoop();
+  }
+
+  startGameLoop() {
+    console.log('🎮 Démarrage de la boucle de jeu...');
+    setInterval(() => {
+      this.gameTick();
+    }, 60000); // Toutes les 60 secondes
+  }
+
+  async gameTick() {
+    console.log('⏳ Tick de jeu pour l\'IA proactive...');
+
+    const allPlayers = await database.getAllPlayers();
+    const activePlayers = Object.values(allPlayers).filter(p => Date.now() - p.lastActive < 1000 * 60 * 60 * 24); // Actifs dans les 24h
+
+    if (activePlayers.length === 0) {
+      console.log('Aucun joueur actif. L\'IA se repose.');
+      return;
+    }
+
+    const time = await worldManager.getCurrentTime();
+
+    const context = {
+      time,
+      activePlayers: activePlayers.map(p => ({ name: p.name, location: p.position.location }))
+    };
+
+    const decision = await pollinations.decideNextWorldEvent(context);
+
+    if (decision.event === 'none') {
+      console.log('Décision du MJ: Rien ne se passe.');
+      return;
+    }
+
+    console.log(`⚡ Événement mondial déclenché par le MJ: ${decision.event}`, decision.data);
+
+    switch (decision.event) {
+      case 'npc_message':
+        const targetPlayer = activePlayers.find(p => p.phoneNumber === decision.data.player_phone);
+        if (targetPlayer) {
+          const from = targetPlayer.phoneNumber + '@s.whatsapp.net';
+          const message = `📱 SMS de ${decision.data.npc_name}:\n\n${decision.data.message}`;
+          await this.sendMessage(from, message);
+        }
+        break;
+
+      case 'minor_incident':
+        // Envoyer à tous les joueurs dans le lieu de l'incident
+        const playersInLocation = activePlayers.filter(p => p.position.location === decision.data.location);
+        for (const player of playersInLocation) {
+          const from = player.phoneNumber + '@s.whatsapp.net';
+          await this.sendMessage(from, `📢 Événement à ${decision.data.location}: ${decision.data.description}`);
+        }
+        break;
+    }
   }
 
   async connectToWhatsApp() {
@@ -164,6 +220,13 @@ class EspritMondeBot {
       if (!text) continue;
 
       const isGroup = from.endsWith('@g.us');
+      const botNumber = this.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+      const isMentioned = message.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(botNumber);
+
+      if (isMentioned) {
+        await this.handleGameMasterConversation(from, text, participant, pushName);
+        continue;
+      }
 
       if (isGroup && !text.startsWith('/')) {
         continue;
@@ -452,6 +515,24 @@ class EspritMondeBot {
     if (!playerManager.isAlive(player)) {
       await this.sendMessage(from, "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer.");
     }
+  }
+
+  async handleGameMasterConversation(from, text, participant, pushName) {
+    const phoneNumber = participant.replace('@s.whatsapp.net', '');
+    const player = await playerManager.getOrCreatePlayer(phoneNumber, pushName);
+    const time = await worldManager.getCurrentTime();
+
+    const context = {
+      playerName: player.name,
+      playerPhoneNumber: player.phoneNumber,
+      playerHistory: player.history.slice(-1)[0]?.action || 'aucune action récente',
+      worldTime: `${time.hour}h, ${time.period}`,
+      worldWeather: time.weather,
+      message: text,
+    };
+
+    const response = await pollinations.generateConversationResponse(context);
+    await this.sendMessage(from, `🎭 **MJ ESPRIT-MONDE**\n\n${response}`);
   }
 
   async sendWelcomeMessage(chatId, player, isGroup = false) {
