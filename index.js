@@ -220,10 +220,19 @@ class EspritMondeBot {
       if (!text) continue;
 
       const isGroup = from.endsWith('@g.us');
-      const botNumber = this.sock.user.id.split(':')[0] + '@s.whatsapp.net';
-      const isMentioned = message.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(botNumber);
 
-      if (isMentioned) {
+      // Stabilité: s'assurer que l'objet `user` est défini avant de l'utiliser
+      if (this.sock.user && this.sock.user.id) {
+        const botNumber = this.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+        const isMentioned = message.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(botNumber);
+
+        if (isMentioned) {
+          await this.handleGameMasterConversation(from, text, participant, pushName);
+          continue;
+        }
+      }
+
+      if (isGroup && !text.startsWith('/')) {
         await this.handleGameMasterConversation(from, text, participant, pushName);
         continue;
       }
