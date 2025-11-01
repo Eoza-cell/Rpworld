@@ -419,31 +419,42 @@ class EspritMondeBot {
     playerManager.addToHistory(player, actionText, calculatedConsequences);
     await database.savePlayer(from, player);
 
+    // Création d'un contexte enrichi pour l'IA
     const narrativeContext = {
       action: actionText,
-      playerStats: player.stats,
+      playerName: player.name,
       location: currentLocation?.name || player.position.location,
       time: `${time.hour}h, ${time.period}`,
       weather: time.weather,
       consequences: JSON.stringify(calculatedConsequences.statChanges),
-      npcsPresent: npcsPresent.map(n => n.name).join(', ')
+      npcsPresent: npcsPresent.map(n => n.name).join(', ') || 'personne',
+      history: player.history.slice(-1)[0]?.action || 'aucune action récente',
+      inventory: Object.keys(player.inventory).join(', ')
     };
 
-    const narrative = await pollinations.generateNarrative(narrativeContext);
+    // Génération de la narration et de l'image en parallèle
+    const [narrative, imageUrl] = await Promise.all([
+      pollinations.generateNarrative(narrativeContext),
+      pollinations.generateImage(actionText)
+    ]);
 
-    let response = `🎭 **ESPRIT-MONDE**\n\n${narrative}\n\n`;
-
+    // Construction de la réponse textuelle
+    let textResponse = '';
     if (npcReactions.length > 0) {
-      response += `👥 ${npcReactions.join(' ')}\n\n`;
+      textResponse += `👥 ${npcReactions.join(' ')}\n\n`;
     }
-
-    response += playerManager.getStatsDisplay(player);
-
+    textResponse += playerManager.getStatsDisplay(player);
     if (calculatedConsequences.events.length > 0) {
-      response += `\n\n⚡ Événements: ${calculatedConsequences.events.join(', ')}`;
+      textResponse += `\n\n⚡ Événements: ${calculatedConsequences.events.join(', ')}`;
     }
 
-    await this.sendMessage(from, response);
+    // Envoi de l'image avec la narration comme légende
+    if (imageUrl) {
+      await this.sendImage(from, imageUrl, `${narrative}\n\n${textResponse}`);
+    } else {
+      // Fallback si l'image échoue: envoyer un message texte complet
+      await this.sendMessage(from, `🎭 **ESPRIT-MONDE**\n\n${narrative}\n\n${textResponse}`);
+    }
 
     if (!playerManager.isAlive(player)) {
       await this.sendMessage(from, "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer.");
@@ -707,9 +718,23 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
   async sendMessage(to, text) {
     try {
+      if (!text || text.trim() === '') return;
       await this.sock.sendMessage(to, { text });
     } catch (error) {
       console.error('Erreur envoi message:', error);
+    }
+  }
+
+  async sendImage(to, imageUrl, caption) {
+    try {
+      await this.sock.sendMessage(to, {
+        image: { url: imageUrl },
+        caption: `🎭 **ESPRIT-MONDE**\n\n${caption}`
+      });
+    } catch (error) {
+      console.error('Erreur envoi image:', error);
+      // Fallback: send text message if image fails
+      await this.sendMessage(to, `🎭 **ESPRIT-MONDE**\n\n${caption}`);
     }
   }
 
