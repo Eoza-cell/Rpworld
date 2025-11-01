@@ -14,9 +14,9 @@ class ActionDetector {
 
   async analyzeAction(actionText, playerContext) {
     const quickAnalysis = this.quickAnalyze(actionText);
-    
+
     const aiAnalysis = await pollinations.analyzeAction(actionText, playerContext);
-    
+
     return {
       ...quickAnalysis,
       ...aiAnalysis,
@@ -83,7 +83,7 @@ class ActionDetector {
   extractTarget(text) {
     const targets = ['boutique', 'magasin', 'bar', 'café', 'restaurant', 'banque', 'bijouterie', 'personne', 'PNJ', 'homme', 'femme'];
     const lowerText = text.toLowerCase();
-    
+
     for (const target of targets) {
       if (lowerText.includes(target)) {
         return target;
