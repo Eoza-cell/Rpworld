@@ -2,84 +2,55 @@ import axios from 'axios';
 
 class FreeAI {
   constructor() {
-    this.textBaseURL = 'https://text.pollinations.ai';
-    this.imageBaseURL = 'https://image.pollinations.ai';
+    // API Pollinations - gratuite, sans clé API
+    this.baseURL = 'https://text.pollinations.ai';
   }
 
   async generateNarrative(context) {
-    console.log('🤖 Appel Pollinations AI pour narration...');
+    console.log('🤖 Appel Pollinations AI...');
     try {
-      const systemPrompt = `Tu es ESPRIT-MONDE, un narrateur de jeu de rôle (RP) ultra-immersif.
+      const systemPrompt = `Tu es ESPRIT-MONDE, narrateur RP immersif.
 
-**RÔLE ABSOLU :**
-- Tu es le maître du jeu. Tu décris le monde, les actions et leurs conséquences.
-- **Ne joue PAS le personnage.** Adresse-toi à lui par "tu".
-- **NE JAMAIS poser de questions.** Ne donne jamais de suggestions.
-- Tu décris ce qui se passe de manière **factuelle, cinématographique et réaliste**.
+RÔLE: Narrateur du monde, pas assistant. Décris les conséquences des actions de manière réaliste. Fais vivre les PNJ et l'environnement. Ne pose JAMAIS de questions.
 
-**TON STYLE D'ÉCRITURE :**
-- **3ème personne limitée.** "Tu vois...", "Tu sens...", "La scène se déroule devant toi...".
-- **Présent de l'indicatif.** L'action se passe maintenant.
-- **Phrases courtes, directes, percutantes.** Entre 2 et 4 phrases maximum.
+STYLE: Narratif, présent, 3-4 phrases courtes et percutantes. Pas de questions ni suggestions.
 
-**CONTEXTE DU MONDE :**
-- Joueur: ${context.playerName || 'un voyageur'}
-- Lieu: ${context.location}
-- Heure: ${context.time}, Météo: ${context.weather}
-- PNJ Présents: ${context.npcsPresent || 'personne'}
-- Historique récent: ${context.history || 'aucune action récente'}
-- Inventaire clé: ${context.inventory || 'rien de particulier'}
+CONTEXTE:
+${context.playerStats ? `Stats: Santé ${context.playerStats.health}%, Énergie ${context.playerStats.energy}%, Faim ${context.playerStats.hunger}%, Mental ${context.playerStats.mental}%, Wanted ${context.playerStats.wanted}%` : ''}
+${context.location ? `Lieu: ${context.location}` : ''}
+${context.time ? `${context.time}` : ''}
+${context.weather ? `Météo: ${context.weather}` : ''}`;
 
-**ACTION DU JOUEUR :**
-- Action: "${context.action}"
-- Conséquences directes: ${context.consequences}`;
+      const userPrompt = `${context.action ? `Action: ${context.action}` : ''}
+${context.consequences ? `Conséquences: ${context.consequences}` : ''}
+${context.npcsPresent ? `PNJ: ${context.npcsPresent}` : ''}
 
-      const userPrompt = `
-**NARRE L'ACTION ET LA SCÈNE DE MANIÈRE IMMERSIVE ET RÉALISTE :**`;
+Narration immersive:`;
 
       const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
       
+      // Utiliser l'endpoint GET de Pollinations (plus fiable)
       const encodedPrompt = encodeURIComponent(fullPrompt);
       const response = await axios.get(
-        `${this.textBaseURL}/${encodedPrompt}`,
+        `${this.baseURL}/${encodedPrompt}`,
         {
-          timeout: 20000, // 20 secondes
-          headers: { 'Accept': 'text/plain' }
+          timeout: 20000,
+          headers: {
+            'Accept': 'text/plain'
+          }
         }
       );
 
-      if (response.data && typeof response.data === 'string' && response.data.length > 10) {
-        console.log('✅ Pollinations AI (narration) réponse OK');
+      if (response.data && typeof response.data === 'string' && response.data.length > 20) {
+        console.log('✅ Pollinations AI réponse OK');
         return response.data.trim();
       }
 
-      console.log('⚠️ Réponse de narration vide, utilisation du fallback');
+      console.log('⚠️ Réponse vide, utilisation du fallback');
       return this.getFallbackNarrative(context);
     } catch (error) {
-      console.error('❌ Erreur Pollinations (narration):', error.message);
+      console.error('❌ Erreur Pollinations:', error.message);
       return this.getFallbackNarrative(context);
-    }
-  }
-
-  async generateImage(narrative) {
-    console.log('🖼️ Appel Pollinations AI pour image...');
-    try {
-      // Prompt amélioré pour une image immersive et stylisée
-      const imagePrompt = `vue à la première personne (POV) d'un jeu vidéo de survie réaliste, photoréaliste, ultra détaillé, 4k, couleurs sombres, cinematic lighting, ${narrative}`;
-
-      const encodedPrompt = encodeURIComponent(imagePrompt);
-      const url = `${this.imageBaseURL}/prompt/${encodedPrompt}`;
-
-      // Simple validation de l'URL
-      const response = await axios.head(url, { timeout: 10000 });
-      if (response.status === 200) {
-        console.log('✅ Pollinations AI (image) URL OK');
-        return url;
-      }
-      return null;
-    } catch (error) {
-      console.error('❌ Erreur Pollinations (image):', error.message);
-      return null;
     }
   }
 
