@@ -31,7 +31,8 @@ class PlayerManager {
         money: 500,
         bankAccount: 0,
         items: [],
-        vehicles: []
+        vehicles: [],
+        hasPhone: false
       },
       job: {
         current: null,
@@ -214,6 +215,19 @@ class PlayerManager {
         condition: 100,
         purchaseDate: Date.now()
       });
+      return { success: true, player };
+    }
+    return { success: false, reason: 'insufficient_funds', player };
+  }
+
+  buyPhone(player, phone) {
+    if (player.inventory.hasPhone) {
+      return { success: false, reason: 'already_owns', player };
+    }
+    if (player.inventory.money >= phone.price) {
+      this.addMoney(player, -phone.price);
+      player.inventory.hasPhone = true;
+      this.addToInventory(player, 'Téléphone', 1);
       return { success: true, player };
     }
     return { success: false, reason: 'insufficient_funds', player };

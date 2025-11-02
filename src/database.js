@@ -203,6 +203,10 @@ class Database {
     return this.players[phoneNumber] || null;
   }
 
+  async getAllPlayers() {
+    return this.players;
+  }
+
   async savePlayer(phoneNumber, playerData) {
     this.players[phoneNumber] = playerData;
     await this.save('players.json', this.players);

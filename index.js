@@ -12,12 +12,13 @@ import worldManager from './src/world.js';
 import actionDetector from './src/actionDetector.js';
 import consequences from './src/consequences.js';
 import npcManager from './src/npcs.js';
-import pollinations from './src/pollinations.js';
+import ai from './src/ai.js';
 import webServer from './src/webServer.js';
 import economy from './src/economy.js';
 import movementManager from './src/movement.js';
 import familyManager from './src/family.js';
 import mapGenerator from './src/mapGenerator.js';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -42,6 +43,93 @@ class EspritMondeBot {
     webServer.updateStatus('Connexion à WhatsApp...', false);
 
     await this.connectToWhatsApp();
+    this.startGameLoop();
+  }
+
+  startGameLoop() {
+    console.log('🎮 Démarrage de la boucle de jeu...');
+    setInterval(() => {
+      this.gameTick();
+    }, 60000); // Toutes les 60 secondes
+  }
+
+  async gameTick() {
+    console.log('⏳ Tick de jeu pour l\'IA proactive...');
+
+    const allPlayers = await database.getAllPlayers();
+    const activePlayers = Object.values(allPlayers).filter(p => Date.now() - p.lastActive < 1000 * 60 * 60 * 24); // Actifs dans les 24h
+
+    if (activePlayers.length === 0) {
+      console.log('Aucun joueur actif. L\'IA se repose.');
+      return;
+    }
+
+    const time = await worldManager.getCurrentTime();
+
+    const context = {
+      time,
+      activePlayers: activePlayers.map(p => ({ name: p.name, location: p.position.location }))
+    };
+
+    const decision = await ai.decideNextWorldEvent(context);
+
+    if (decision.event === 'none') {
+      console.log('Décision du MJ: Rien ne se passe.');
+      return;
+    }
+
+    console.log(`⚡ Événement mondial déclenché par le MJ: ${decision.event}`, decision.data);
+
+    switch (decision.event) {
+      case 'npc_message':
+        const targetPlayer = activePlayers.find(p => p.phoneNumber === decision.data.player_phone);
+        if (targetPlayer) {
+          const from = targetPlayer.phoneNumber + '@s.whatsapp.net';
+          const message = `📱 SMS de ${decision.data.npc_name}:\n\n${decision.data.message}`;
+          await this.sendMessage(from, message);
+        }
+        break;
+
+      case 'minor_incident':
+        // Envoyer à tous les joueurs dans le lieu de l'incident
+        const playersInLocation = activePlayers.filter(p => p.position.location === decision.data.location);
+        for (const player of playersInLocation) {
+          const from = player.phoneNumber + '@s.whatsapp.net';
+          await this.sendMessage(from, `📢 Événement à ${decision.data.location}: ${decision.data.description}`);
+        }
+        break;
+
+      case 'execute_command':
+        const targetPlayerForCommand = activePlayers.find(p => p.phoneNumber === decision.data.player_phone);
+        if (targetPlayerForCommand) {
+          const { command, args } = decision.data;
+          let commandFeedback = ``;
+
+          switch (command) {
+            case 'add_money':
+              const amount = parseInt(args[0]);
+              playerManager.addMoney(targetPlayerForCommand, amount);
+              commandFeedback = `💰 Tu as trouvé ${amount}$ par terre !`;
+              break;
+            case 'update_stats':
+              const stat = args[0];
+              const value = parseInt(args[1]);
+              playerManager.updateStats(targetPlayerForCommand, { [stat]: value });
+              commandFeedback = `❤️‍🩹 Tu te sens soudainement ${value > 0 ? 'mieux' : 'plus mal'}...`;
+              break;
+            case 'give_item':
+              const itemName = args[0];
+              const quantity = parseInt(args[1]);
+              playerManager.addToInventory(targetPlayerForCommand, itemName, quantity);
+              commandFeedback = `🎁 Tu as reçu ${quantity} ${itemName} !`;
+              break;
+          }
+          await database.savePlayer(targetPlayerForCommand.phoneNumber, targetPlayerForCommand);
+          const from = targetPlayerForCommand.phoneNumber + '@s.whatsapp.net';
+          await this.sendMessage(from, commandFeedback);
+        }
+        break;
+    }
   }
 
   async connectToWhatsApp() {
@@ -165,7 +253,19 @@ class EspritMondeBot {
 
       const isGroup = from.endsWith('@g.us');
 
+      // Stabilité: s'assurer que l'objet `user` est défini avant de l'utiliser
+      if (this.sock.user && this.sock.user.id) {
+        const botNumber = this.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+        const isMentioned = message.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(botNumber);
+
+        if (isMentioned) {
+          await this.handleGameMasterConversation(from, text, participant, pushName);
+          continue;
+        }
+      }
+
       if (isGroup && !text.startsWith('/')) {
+        await this.handleGameMasterConversation(from, text, participant, pushName);
         continue;
       }
 
@@ -313,6 +413,12 @@ class EspritMondeBot {
       return;
     }
 
+    if (text.toLowerCase().startsWith('/acheter ')) {
+      const itemName = text.split(' ')[1];
+      await this.buyItem(from, player, itemName);
+      return;
+    }
+
     if (text.toLowerCase() === '/banque' || text.toLowerCase() === '/bank') {
       await this.showBank(from, player);
       return;
@@ -337,6 +443,77 @@ class EspritMondeBot {
 
     if (text.toLowerCase() === '/finir' || text.toLowerCase() === '/finish') {
       await this.finishWork(from, player);
+      return;
+    }
+
+    if (text.toLowerCase() === '/acheter_telephone') {
+      const electronicsShop = economy.shops.electronics;
+      if (player.position.location !== electronicsShop.location) {
+        await this.sendMessage(from, `❌ Tu dois être à la ${electronicsShop.name} (${electronicsShop.location}) pour acheter un téléphone.`);
+        return;
+      }
+
+      const phone = economy.items.phone;
+      const result = playerManager.buyPhone(player, phone);
+
+      if (result.success) {
+        await database.savePlayer(player.phoneNumber, result.player);
+        await this.sendMessage(from, `✅ Tu as acheté un ${phone.name} pour ${phone.price}$ !`);
+      } else {
+        if (result.reason === 'already_owns') {
+          await this.sendMessage(from, '❌ Tu possèdes déjà un téléphone.');
+        } else {
+          await this.sendMessage(from, `❌ Argent insuffisant. Tu as besoin de ${phone.price}$.`);
+        }
+      }
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/appeler ')) {
+      if (!player.inventory.hasPhone) {
+        await this.sendMessage(from, '❌ Tu as besoin d\'un téléphone pour passer des appels.');
+        return;
+      }
+      const targetName = text.split(' ')[1];
+      if (!targetName) {
+        await this.sendMessage(from, '❌ Tu dois spécifier un nom de joueur. Ex: /appeler Jean');
+        return;
+      }
+      const allPlayers = await database.getAllPlayers();
+      const targetPlayer = Object.values(allPlayers).find(p => p.customName && p.customName.toLowerCase() === targetName.toLowerCase());
+
+      if (targetPlayer) {
+        const targetJid = `${targetPlayer.phoneNumber}@s.whatsapp.net`;
+        await this.sendMessage(targetJid, `📞 Tu reçois un appel de ${player.customName}.`);
+        await this.sendMessage(from, `📞 Tu appelles ${targetPlayer.customName}...`);
+      } else {
+        await this.sendMessage(from, `❌ Joueur "${targetName}" non trouvé.`);
+      }
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/sms ')) {
+      if (!player.inventory.hasPhone) {
+        await this.sendMessage(from, '❌ Tu as besoin d\'un téléphone pour envoyer des SMS.');
+        return;
+      }
+      const parts = text.split(' ');
+      const targetName = parts[1];
+      const message = parts.slice(2).join(' ');
+      if (!targetName || !message) {
+        await this.sendMessage(from, '❌ Tu dois spécifier un nom de joueur et un message. Ex: /sms Jean Salut !');
+        return;
+      }
+      const allPlayers = await database.getAllPlayers();
+      const targetPlayer = Object.values(allPlayers).find(p => p.customName && p.customName.toLowerCase() === targetName.toLowerCase());
+
+      if (targetPlayer) {
+        const targetJid = `${targetPlayer.phoneNumber}@s.whatsapp.net`;
+        await this.sendMessage(targetJid, `📱 SMS de ${player.customName}: ${message}`);
+        await this.sendMessage(from, `📱 SMS envoyé à ${targetPlayer.customName}.`);
+      } else {
+        await this.sendMessage(from, `❌ Joueur "${targetName}" non trouvé.`);
+      }
       return;
     }
 
@@ -421,33 +598,63 @@ class EspritMondeBot {
 
     const narrativeContext = {
       action: actionText,
+      playerName: player.name,
       playerStats: player.stats,
       location: currentLocation?.name || player.position.location,
       time: `${time.hour}h, ${time.period}`,
       weather: time.weather,
       consequences: JSON.stringify(calculatedConsequences.statChanges),
-      npcsPresent: npcsPresent.map(n => n.name).join(', ')
+      npcsPresent: npcsPresent.map(n => n.name).join(', ') || 'personne',
+      history: player.history.slice(-1)[0]?.action || 'aucune action récente',
+      inventory: player.inventory.items.map(i => `${i.name} (x${i.quantity})`).join(', ') || 'rien',
+      money: `${player.inventory.money}$`
     };
 
-    const narrative = await pollinations.generateNarrative(narrativeContext);
+    // Génération de la narration et de l'image en parallèle
+    const [narrative, imageUrl] = await Promise.all([
+      ai.generateNarrative(narrativeContext),
+      ai.generateImage(actionText) // Utiliser le texte de l'action brute pour l'image
+    ]);
 
-    let response = `🎭 **ESPRIT-MONDE**\n\n${narrative}\n\n`;
-
+    // Construction de la réponse textuelle
+    let textResponse = '';
     if (npcReactions.length > 0) {
-      response += `👥 ${npcReactions.join(' ')}\n\n`;
+      textResponse += `👥 ${npcReactions.join(' ')}\n\n`;
     }
-
-    response += playerManager.getStatsDisplay(player);
-
+    textResponse += playerManager.getStatsDisplay(player);
     if (calculatedConsequences.events.length > 0) {
-      response += `\n\n⚡ Événements: ${calculatedConsequences.events.join(', ')}`;
+      textResponse += `\n\n⚡ Événements: ${calculatedConsequences.events.join(', ')}`;
     }
 
-    await this.sendMessage(from, response);
+    // Envoi de l'image avec la narration comme légende
+    if (imageUrl) {
+      await this.sendImage(from, imageUrl, `${narrative}\n\n${textResponse}`);
+    } else {
+      // Fallback si l'image échoue: envoyer un message texte complet
+      await this.sendMessage(from, `🎭 **ESPRIT-MONDE**\n\n${narrative}\n\n${textResponse}`);
+    }
 
     if (!playerManager.isAlive(player)) {
       await this.sendMessage(from, "\n\n💀 **TU ES MORT**\nTa santé est tombée à zéro. Ton aventure se termine ici.\nTape /start pour recommencer.");
     }
+  }
+
+  async handleGameMasterConversation(from, text, participant, pushName) {
+    const phoneNumber = participant.replace('@s.whatsapp.net', '');
+    const player = await playerManager.getOrCreatePlayer(phoneNumber, pushName);
+    const time = await worldManager.getCurrentTime();
+
+    const context = {
+      playerName: player.name,
+      playerPhoneNumber: player.phoneNumber,
+      playerHistory: player.history.slice(-1)[0]?.action || 'aucune action récente',
+      worldTime: `${time.hour}h, ${time.period}`,
+      worldWeather: time.weather,
+      message: text,
+    };
+
+    const response = await ai.generateConversationResponse(context);
+    await this.sendMessage(from, `🎭 **MJ ESPRIT-MONDE**\n\n${response}`);
   }
 
   async sendWelcomeMessage(chatId, player, isGroup = false) {
@@ -680,6 +887,44 @@ ${await worldManager.getLocationDescription(player.position.location)}
     }
   }
 
+  async buyItem(chatId, player, itemId) {
+    const itemInfo = economy.getItemInfo(itemId);
+    if (!itemInfo) {
+      await this.sendMessage(chatId, '❌ Objet inconnu.');
+      return;
+    }
+
+    const sellingShops = economy.getShopsForItem(itemId);
+    if (sellingShops.length === 0) {
+      await this.sendMessage(chatId, '❌ Cet objet n\'est en vente nulle part.');
+      return;
+    }
+
+    const playerLocation = player.position.location;
+    const canBuyHere = sellingShops.some(shop => shop.location === playerLocation);
+
+    if (!canBuyHere) {
+      const shopList = sellingShops.map(s => `${s.name} (${s.location})`).join(', ');
+      await this.sendMessage(chatId, `❌ Tu ne peux pas acheter ça ici. Va à : ${shopList}.`);
+      return;
+    }
+
+    if (player.inventory.money < itemInfo.price) {
+      await this.sendMessage(chatId, `❌ Argent insuffisant. Tu as besoin de ${itemInfo.price}$.`);
+      return;
+    }
+
+    playerManager.addMoney(player, -itemInfo.price);
+    playerManager.addToInventory(player, itemInfo.name, 1);
+
+    if (itemInfo.effects) {
+      playerManager.updateStats(player, itemInfo.effects);
+    }
+
+    await database.savePlayer(player.phoneNumber, player);
+    await this.sendMessage(chatId, `✅ Tu as acheté: ${itemInfo.name} pour ${itemInfo.price}$.`);
+  }
+
   async showBank(chatId, player) {
     const message = `🏦 **BANQUE INTERNATIONALE**\n\n💰 Argent liquide: ${player.inventory.money}$\n🏦 Compte bancaire: ${player.inventory.bankAccount}$\n💎 Total: ${player.inventory.money + player.inventory.bankAccount}$\n\n/deposer [montant] - Déposer\n/retirer [montant] - Retirer`;
     await this.sendMessage(chatId, message);
@@ -707,9 +952,26 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
   async sendMessage(to, text) {
     try {
+      if (!text || text.trim() === '') return;
       await this.sock.sendMessage(to, { text });
     } catch (error) {
       console.error('Erreur envoi message:', error);
+    }
+  }
+
+  async sendImage(to, imageUrl, caption) {
+    try {
+      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const buffer = Buffer.from(response.data, 'binary');
+
+      await this.sock.sendMessage(to, {
+        image: buffer,
+        caption: `🎭 **ESPRIT-MONDE**\n\n${caption}`
+      });
+    } catch (error) {
+      console.error('Erreur envoi image:', error);
+      // Fallback: send text message if image fails
+      await this.sendMessage(to, `🎭 **ESPRIT-MONDE**\n\n${caption}`);
     }
   }
 
@@ -731,17 +993,21 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
 
   async handleCharacterCreation(chatId, player, text, isGroup = false) {
     const phoneNumber = player.phoneNumber;
+    let processedText = text.trim();
+    if (isGroup && processedText.startsWith('/')) {
+      processedText = processedText.substring(1);
+    }
     
     switch (player.creationStep) {
       case 'name':
-        player.customName = text.trim();
+        player.customName = processedText;
         player.creationStep = 'age';
         await database.savePlayer(phoneNumber, player);
         await this.sendMessage(chatId, `✅ Nom: ${player.customName}\n\n🎂 **Étape 2/4 : Âge**\nQuel âge a ${player.customName} ?\n\nTape un nombre entre 18 et 80.`);
         break;
 
       case 'age':
-        const age = parseInt(text.trim());
+        const age = parseInt(processedText);
         if (isNaN(age) || age < 18 || age > 80) {
           await this.sendMessage(chatId, `❌ Âge invalide. Entre 18 et 80 ans.\n\nTape un nombre comme: 25`);
           return;
@@ -753,7 +1019,7 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
         break;
 
       case 'gender':
-        const gender = text.toLowerCase().trim();
+        const gender = processedText.toLowerCase();
         if (gender !== 'homme' && gender !== 'femme') {
           await this.sendMessage(chatId, "❌ Genre invalide. Tape 'homme' ou 'femme'.");
           return;
@@ -766,7 +1032,7 @@ Exemple: Marc Dubois, Sarah Chen, etc.`;
 
       case 'background':
         const validBackgrounds = ['athletique', 'intellectuel', 'streetwise', 'riche', 'mecano'];
-        const bg = text.toLowerCase().trim();
+        const bg = processedText.toLowerCase();
 
         if (!validBackgrounds.includes(bg)) {
           await this.sendMessage(chatId, "❌ Background invalide. Choisis parmi: athletique, intellectuel, streetwise, riche, mecano");
