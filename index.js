@@ -63,54 +63,6 @@ class EspritMondeBot {
       return;
     }
 
-    if (text.toLowerCase().startsWith('/appeler ')) {
-      if (!player.inventory.hasPhone) {
-        await this.sendMessage(from, '❌ Tu as besoin d\'un téléphone pour passer des appels.');
-        return;
-      }
-      const targetName = text.split(' ')[1];
-      if (!targetName) {
-        await this.sendMessage(from, '❌ Tu dois spécifier un nom de joueur. Ex: /appeler Jean');
-        return;
-      }
-      const allPlayers = await database.getAllPlayers();
-      const targetPlayer = Object.values(allPlayers).find(p => p.customName && p.customName.toLowerCase() === targetName.toLowerCase());
-
-      if (targetPlayer) {
-        const targetJid = `${targetPlayer.phoneNumber}@s.whatsapp.net`;
-        await this.sendMessage(targetJid, `📞 Tu reçois un appel de ${player.customName}.`);
-        await this.sendMessage(from, `📞 Tu appelles ${targetPlayer.customName}...`);
-      } else {
-        await this.sendMessage(from, `❌ Joueur "${targetName}" non trouvé.`);
-      }
-      return;
-    }
-
-    if (text.toLowerCase().startsWith('/sms ')) {
-      if (!player.inventory.hasPhone) {
-        await this.sendMessage(from, '❌ Tu as besoin d\'un téléphone pour envoyer des SMS.');
-        return;
-      }
-      const parts = text.split(' ');
-      const targetName = parts[1];
-      const message = parts.slice(2).join(' ');
-      if (!targetName || !message) {
-        await this.sendMessage(from, '❌ Tu dois spécifier un nom de joueur et un message. Ex: /sms Jean Salut !');
-        return;
-      }
-      const allPlayers = await database.getAllPlayers();
-      const targetPlayer = Object.values(allPlayers).find(p => p.customName && p.customName.toLowerCase() === targetName.toLowerCase());
-
-      if (targetPlayer) {
-        const targetJid = `${targetPlayer.phoneNumber}@s.whatsapp.net`;
-        await this.sendMessage(targetJid, `📱 SMS de ${player.customName}: ${message}`);
-        await this.sendMessage(from, `📱 SMS envoyé à ${targetPlayer.customName}.`);
-      } else {
-        await this.sendMessage(from, `❌ Joueur "${targetName}" non trouvé.`);
-      }
-      return;
-    }
-
     const time = await worldManager.getCurrentTime();
 
     const context = {
@@ -512,6 +464,54 @@ class EspritMondeBot {
         } else {
           await this.sendMessage(from, `❌ Argent insuffisant. Tu as besoin de ${phone.price}$.`);
         }
+      }
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/appeler ')) {
+      if (!player.inventory.hasPhone) {
+        await this.sendMessage(from, '❌ Tu as besoin d\'un téléphone pour passer des appels.');
+        return;
+      }
+      const targetName = text.split(' ')[1];
+      if (!targetName) {
+        await this.sendMessage(from, '❌ Tu dois spécifier un nom de joueur. Ex: /appeler Jean');
+        return;
+      }
+      const allPlayers = await database.getAllPlayers();
+      const targetPlayer = Object.values(allPlayers).find(p => p.customName && p.customName.toLowerCase() === targetName.toLowerCase());
+
+      if (targetPlayer) {
+        const targetJid = `${targetPlayer.phoneNumber}@s.whatsapp.net`;
+        await this.sendMessage(targetJid, `📞 Tu reçois un appel de ${player.customName}.`);
+        await this.sendMessage(from, `📞 Tu appelles ${targetPlayer.customName}...`);
+      } else {
+        await this.sendMessage(from, `❌ Joueur "${targetName}" non trouvé.`);
+      }
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/sms ')) {
+      if (!player.inventory.hasPhone) {
+        await this.sendMessage(from, '❌ Tu as besoin d\'un téléphone pour envoyer des SMS.');
+        return;
+      }
+      const parts = text.split(' ');
+      const targetName = parts[1];
+      const message = parts.slice(2).join(' ');
+      if (!targetName || !message) {
+        await this.sendMessage(from, '❌ Tu dois spécifier un nom de joueur et un message. Ex: /sms Jean Salut !');
+        return;
+      }
+      const allPlayers = await database.getAllPlayers();
+      const targetPlayer = Object.values(allPlayers).find(p => p.customName && p.customName.toLowerCase() === targetName.toLowerCase());
+
+      if (targetPlayer) {
+        const targetJid = `${targetPlayer.phoneNumber}@s.whatsapp.net`;
+        await this.sendMessage(targetJid, `📱 SMS de ${player.customName}: ${message}`);
+        await this.sendMessage(from, `📱 SMS envoyé à ${targetPlayer.customName}.`);
+      } else {
+        await this.sendMessage(from, `❌ Joueur "${targetName}" non trouvé.`);
       }
       return;
     }

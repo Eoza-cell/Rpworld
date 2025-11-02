@@ -94,11 +94,11 @@ class AI {
 - Si rien: \`{"event": "none"}\`
 - Si un PNJ envoie un SMS: \`{"event": "npc_message", "data": {"npc_name": "Nom PNJ", "player_phone": "numéro_joueur", "message": "Ton message ici."}}\`
 - Si un incident mineur: \`{"event": "minor_incident", "data": {"location": "nom_lieu", "description": "Description de l'incident."}}\`
-- Pour exécuter une commande sur un joueur: `{"event": "execute_command", "data": {"player_phone": "numéro_joueur", "command": "nom_commande", "args": ["arg1", "arg2"]}}`
+- Pour exécuter une commande sur un joueur: \`{"event": "execute_command", "data": {"player_phone": "numéro_joueur", "command": "nom_commande", "args": ["arg1", "arg2"]}}\`
 **COMMANDES DISPONIBLES :**
-- `add_money <amount>`: Ajoute de l'argent au joueur.
-- `update_stats <stat> <value>`: Met à jour une stat (ex: `health -10`).
-- `give_item <item_name> <quantity>`: Donne un objet au joueur.
+- \`add_money <amount>\`: Ajoute de l'argent au joueur.
+- \`update_stats <stat> <value>\`: Met à jour une stat (ex: \`health -10\`).
+- \`give_item <item_name> <quantity>\`: Donne un objet au joueur.
 **CONTEXTE ACTUEL :**
 - Heure: ${context.time.hour}h | Météo: ${context.time.weather}
 - Joueurs actifs: ${context.activePlayers.map(p => `${p.name} à ${p.location}`).join(', ') || 'aucun'}`;
