@@ -18,6 +18,7 @@ import economy from './src/economy.js';
 import movementManager from './src/movement.js';
 import familyManager from './src/family.js';
 import mapGenerator from './src/mapGenerator.js';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -960,8 +961,11 @@ ${await worldManager.getLocationDescription(player.position.location)}
 
   async sendImage(to, imageUrl, caption) {
     try {
+      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const buffer = Buffer.from(response.data, 'binary');
+
       await this.sock.sendMessage(to, {
-        image: { url: imageUrl },
+        image: buffer,
         caption: `🎭 **ESPRIT-MONDE**\n\n${caption}`
       });
     } catch (error) {
