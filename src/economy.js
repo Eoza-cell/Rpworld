@@ -122,6 +122,22 @@ class EconomyManager {
         requirements: { money: 5000 }
       }
     };
+
+    this.items = {
+      'phone': {
+        name: 'Téléphone',
+        price: 350,
+        description: 'Un smartphone basique pour rester connecté.'
+      }
+    };
+
+    this.shops = {
+      'electronics': {
+        name: 'Boutique d\'Électronique',
+        inventory: ['phone'],
+        location: 'centre-ville'
+      }
+    };
   }
 
   getJobsList() {
