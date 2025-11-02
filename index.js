@@ -145,6 +145,37 @@ class EspritMondeBot {
           await this.sendMessage(from, `📢 Événement à ${decision.data.location}: ${decision.data.description}`);
         }
         break;
+
+      case 'execute_command':
+        const targetPlayerForCommand = activePlayers.find(p => p.phoneNumber === decision.data.player_phone);
+        if (targetPlayerForCommand) {
+          const { command, args } = decision.data;
+          let commandFeedback = ``;
+
+          switch (command) {
+            case 'add_money':
+              const amount = parseInt(args[0]);
+              playerManager.addMoney(targetPlayerForCommand, amount);
+              commandFeedback = `💰 Tu as trouvé ${amount}$ par terre !`;
+              break;
+            case 'update_stats':
+              const stat = args[0];
+              const value = parseInt(args[1]);
+              playerManager.updateStats(targetPlayerForCommand, { [stat]: value });
+              commandFeedback = `❤️‍🩹 Tu te sens soudainement ${value > 0 ? 'mieux' : 'plus mal'}...`;
+              break;
+            case 'give_item':
+              const itemName = args[0];
+              const quantity = parseInt(args[1]);
+              playerManager.addToInventory(targetPlayerForCommand, itemName, quantity);
+              commandFeedback = `🎁 Tu as reçu ${quantity} ${itemName} !`;
+              break;
+          }
+          await database.savePlayer(targetPlayerForCommand.phoneNumber, targetPlayerForCommand);
+          const from = targetPlayerForCommand.phoneNumber + '@s.whatsapp.net';
+          await this.sendMessage(from, commandFeedback);
+        }
+        break;
     }
   }
 
@@ -426,6 +457,12 @@ class EspritMondeBot {
     if (text.toLowerCase().startsWith('/acheter_vehicule ')) {
       const vehicleId = text.split(' ')[1];
       await this.buyVehicle(from, player, vehicleId);
+      return;
+    }
+
+    if (text.toLowerCase().startsWith('/acheter ')) {
+      const itemName = text.split(' ')[1];
+      await this.buyItem(from, player, itemName);
       return;
     }
 
@@ -847,6 +884,44 @@ ${await worldManager.getLocationDescription(player.position.location)}
     } else {
       await this.sendMessage(chatId, `❌ Argent insuffisant (${vehicleInfo.price}$ requis)`);
     }
+  }
+
+  async buyItem(chatId, player, itemId) {
+    const itemInfo = economy.getItemInfo(itemId);
+    if (!itemInfo) {
+      await this.sendMessage(chatId, '❌ Objet inconnu.');
+      return;
+    }
+
+    const sellingShops = economy.getShopsForItem(itemId);
+    if (sellingShops.length === 0) {
+      await this.sendMessage(chatId, '❌ Cet objet n\'est en vente nulle part.');
+      return;
+    }
+
+    const playerLocation = player.position.location;
+    const canBuyHere = sellingShops.some(shop => shop.location === playerLocation);
+
+    if (!canBuyHere) {
+      const shopList = sellingShops.map(s => `${s.name} (${s.location})`).join(', ');
+      await this.sendMessage(chatId, `❌ Tu ne peux pas acheter ça ici. Va à : ${shopList}.`);
+      return;
+    }
+
+    if (player.inventory.money < itemInfo.price) {
+      await this.sendMessage(chatId, `❌ Argent insuffisant. Tu as besoin de ${itemInfo.price}$.`);
+      return;
+    }
+
+    playerManager.addMoney(player, -itemInfo.price);
+    playerManager.addToInventory(player, itemInfo.name, 1);
+
+    if (itemInfo.effects) {
+      playerManager.updateStats(player, itemInfo.effects);
+    }
+
+    await database.savePlayer(player.phoneNumber, player);
+    await this.sendMessage(chatId, `✅ Tu as acheté: ${itemInfo.name} pour ${itemInfo.price}$.`);
   }
 
   async showBank(chatId, player) {

@@ -128,7 +128,16 @@ class EconomyManager {
         name: 'Téléphone',
         price: 350,
         description: 'Un smartphone basique pour rester connecté.'
-      }
+      },
+      'bouteille_eau': { name: 'Bouteille d\'eau', price: 1, type: 'drink', effects: { hunger: 0, energy: 5 } },
+      'sandwich': { name: 'Sandwich', price: 5, type: 'food', effects: { hunger: 25 } },
+      'pizza': { name: 'Pizza', price: 12, type: 'food', effects: { hunger: 50 } },
+      'canette_soda': { name: 'Canette de Soda', price: 2, type: 'drink', effects: { hunger: 5, energy: 10 } },
+      'cafe': { name: 'Café', price: 3, type: 'drink', effects: { energy: 15 } },
+      'barre_chocolat': { name: 'Barre de chocolat', price: 2, type: 'food', effects: { hunger: 10, energy: 5 } },
+      'plat_prepare': { name: 'Plat préparé', price: 8, type: 'food', effects: { hunger: 40 } },
+      'pain': { name: 'Pain', price: 1, type: 'food', effects: { hunger: 15 } },
+      'pommes': { name: 'Pommes (kg)', price: 3, type: 'food', effects: { hunger: 10 } }
     };
 
     this.shops = {
@@ -136,6 +145,11 @@ class EconomyManager {
         name: 'Boutique d\'Électronique',
         inventory: ['phone'],
         location: 'centre-ville'
+      },
+      'supermarche': {
+        name: 'Supermarché',
+        inventory: ['bouteille_eau', 'sandwich', 'pizza', 'canette_soda', 'cafe', 'barre_chocolat', 'plat_prepare', 'pain', 'pommes'],
+        location: 'marais'
       }
     };
   }
@@ -177,6 +191,20 @@ class EconomyManager {
 
   getVehicleInfo(vehicleId) {
     return this.vehicles[vehicleId];
+  }
+
+  getItemInfo(itemId) {
+    return this.items[itemId];
+  }
+
+  getShopsForItem(itemId) {
+    const sellingShops = [];
+    for (const shopId in this.shops) {
+      if (this.shops[shopId].inventory.includes(itemId)) {
+        sellingShops.push(this.shops[shopId]);
+      }
+    }
+    return sellingShops;
   }
 }
 
