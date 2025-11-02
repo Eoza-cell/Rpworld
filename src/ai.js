@@ -62,10 +62,15 @@ class AI {
 - Lieu: ${context.location} | Heure: ${context.time}, Météo: ${context.weather}
 - PNJ Présents: ${context.npcsPresent || 'personne'}
 - Inventaire: ${context.inventory || 'rien'} | Argent: ${context.money || 'inconnu'}
+**RÈGLES DE SIMULATION PHYSIQUE ET LOGIQUE :**
+1.  **Proximité requise pour les actions :** Un joueur ne peut interagir qu'avec des objets ou des personnes dans son lieu actuel.
+2.  **Achats :** Pour acheter un objet, le joueur DOIT être dans un lieu qui est une boutique vendant cet objet. Si le joueur n'est pas dans une boutique, il ne peut PAS acheter, sauf s'il possède un téléphone pour commander.
+3.  **Logique d'inventaire :** Le joueur ne peut utiliser que les objets qu'il possède dans son inventaire.
+4.  **Physique de base :** Les actions doivent être physiquement possibles pour un humain. Pas de super-pouvoirs.
 **ACTION DU JOUEUR :**
 - Action: "${context.action}"
 - Conséquences directes (calculées): ${context.consequences}`;
-    const userPrompt = `**NARRE L'ACTION ET LA SCÈNE DE MANIÈRE IMMERSIVE, EN COMMENÇANT PAR "[${context.time}]" ET EN TE BASANT STRICTEMENT SUR LE CONTEXTE FOURNI :**`;
+    const userPrompt = `**NARRE L'ACTION ET LA SCÈNE DE MANIÈRE IMMERSIVE, EN COMMENÇANT PAR "[${context.time}]" ET EN RESPECTANT SCRUPULEUSEMENT LES RÈGLES DE SIMULATION CI-DESSUS. SI L'ACTION EST IMPOSSIBLE, DÉCRIS L'ÉCHEC DE L'ACTION DE FAÇON RÉALISTE.**`;
 
     return this.generateText(systemPrompt, userPrompt);
   }
