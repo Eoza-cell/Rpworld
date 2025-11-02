@@ -1,4 +1,4 @@
-import pollinations from './pollinations.js';
+import ai from './ai.js';
 
 class ActionDetector {
   constructor() {
@@ -15,7 +15,7 @@ class ActionDetector {
   async analyzeAction(actionText, playerContext) {
     const quickAnalysis = this.quickAnalyze(actionText);
 
-    const aiAnalysis = await pollinations.analyzeAction(actionText, playerContext);
+    const aiAnalysis = await ai.analyzeAction(actionText, playerContext);
 
     return {
       ...quickAnalysis,
